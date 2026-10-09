@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CampusHub | Faculty Dashboard</title>
+  <link rel="stylesheet" href="../../css/global.css">
+  <link rel="stylesheet" href="../../css/dashboard.css">
+  <link rel="stylesheet" href="../../css/responsive.css">
+</head>
+<body class="dashboard-body">
+
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <a href="#" class="sidebar-logo">
+        <div class="sidebar-logo-icon">👨‍🏫</div>
+        <span>CampusHub</span>
+      </a>
+    </div>
+    <div id="sidebar-navigation" class="sidebar-menu"></div>
+    <div class="sidebar-footer">
+      <button id="logout-btn" class="btn" style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-size: 0.85rem;">
+        Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Wrapper -->
+  <div class="main-wrapper">
+    <!-- Top Navbar -->
+    <header class="navbar">
+      <div class="navbar-left">
+        <h1 class="page-title">Faculty Portal</h1>
+      </div>
+      <div class="navbar-right">
+        <div class="user-pill" onclick="openProfileModal()">
+          <div id="nav-user-avatar" class="user-avatar">F</div>
+          <div class="user-info">
+            <span id="nav-user-name" class="user-name">Loading...</span>
+            <span id="nav-user-role" class="user-role-tag">FACULTY</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="content-area">
+      <!-- Welcome Banner -->
+      <div class="welcome-banner" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.05) 100%); border-color: rgba(16, 185, 129, 0.3);">
+        <h2>Welcome back, <span id="faculty-name">Faculty Member</span>!</h2>
+        <p>Department: <strong id="faculty-dept">Department of Computer Science & Engineering</strong></p>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-data">
+            <h4>Pending Dept Leaves</h4>
+            <div id="metric-pending-dept-leaves" class="metric-number">0</div>
+          </div>
+          <div class="metric-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">📝</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-data">
+            <h4>Dept Students</h4>
+            <div class="metric-number">3</div>
+          </div>
+          <div class="metric-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">🎓</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-data">
+            <h4>Assigned Issues</h4>
+            <div id="metric-assigned-issues" class="metric-number">0</div>
+          </div>
+          <div class="metric-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">🔧</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-data">
+            <h4>Complaints to Review</h4>
+            <div class="metric-number">0</div>
+          </div>
+          <div class="metric-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">💬</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-data">
+            <h4>Dept Events</h4>
+            <div class="metric-number">0</div>
+          </div>
+          <div class="metric-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">📅</div>
+        </div>
+      </div>
+
+      <!-- Department Leave Requests Card & Table -->
+      <div class="status-card" style="margin-bottom: 28px;">
+        <div class="card-title">
+          <span>Department Leave Requests</span>
+          <select id="faculty-status-filter" class="form-input" style="width: auto; padding: 6px 12px; font-size: 0.85rem;">
+            <option value="">All Statuses</option>
+            <option value="Pending" selected>Pending Only</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+            <thead>
+              <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: #94a3b8; font-size: 0.8rem; text-transform: uppercase;">
+                <th style="padding: 12px 10px;">Student</th>
+                <th style="padding: 12px 10px;">Type</th>
+                <th style="padding: 12px 10px;">Dates</th>
+                <th style="padding: 12px 10px;">Document</th>
+                <th style="padding: 12px 10px;">Status</th>
+                <th style="padding: 12px 10px;">Remarks</th>
+                <th style="padding: 12px 10px;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="faculty-leaves-table-body">
+              <tr>
+                <td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">
+                  Loading department leave records...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Assigned Campus Issues Card & Table -->
+      <div class="status-card">
+        <div class="card-title">
+          <span>Assigned Campus Issues</span>
+          <span class="badge badge-success">Assigned Tasks</span>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+            <thead>
+              <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: #94a3b8; font-size: 0.8rem; text-transform: uppercase;">
+                <th style="padding: 12px 10px;">Issue & Category</th>
+                <th style="padding: 12px 10px;">Reporter</th>
+                <th style="padding: 12px 10px;">Location</th>
+                <th style="padding: 12px 10px;">Photo</th>
+                <th style="padding: 12px 10px;">Status</th>
+                <th style="padding: 12px 10px;">Resolution Remarks</th>
+                <th style="padding: 12px 10px;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="faculty-issues-table-body">
+              <tr>
+                <td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">
+                  Loading assigned issues...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Review Leave Modal -->
+  <div id="review-leave-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 550px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Review Department Leave Application</h3>
+        <button class="modal-close" onclick="closeReviewModal()">&times;</button>
+      </div>
+
+      <div id="review-alert" class="alert-box alert-danger"></div>
+
+      <div style="margin-bottom: 16px;">
+        <div class="status-item" style="margin-bottom: 8px;">
+          <div class="status-label">Student Name</div>
+          <div class="status-value" id="review-student-name">--</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+          <div class="status-item">
+            <div class="status-label">Leave Type</div>
+            <div class="status-value" id="review-leave-type">--</div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">Duration</div>
+            <div class="status-value" id="review-dates">--</div>
+          </div>
+        </div>
+        <div class="status-item" style="margin-bottom: 8px;">
+          <div class="status-label">Reason</div>
+          <div class="status-value" id="review-reason" style="font-weight: 400; font-size: 0.9rem;">--</div>
+        </div>
+        <div class="status-item" style="margin-bottom: 16px;">
+          <div class="status-label">Attachment</div>
+          <div class="status-value" id="review-doc-container">--</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="reviewerRemarks">Faculty Remarks</label>
+        <textarea id="reviewerRemarks" class="form-input" rows="3" placeholder="Add approval notes or rejection reason..."></textarea>
+      </div>
+
+      <div style="display: flex; gap: 12px; margin-top: 20px;">
+        <button class="btn" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);" onclick="processLeave('Approved')">
+          ✓ Approve Request
+        </button>
+        <button class="btn" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);" onclick="processLeave('Rejected')">
+          ✕ Reject Request
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Process Issue Modal -->
+  <div id="process-issue-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 550px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Process Assigned Campus Issue</h3>
+        <button class="modal-close" onclick="closeProcessIssueModal()">&times;</button>
+      </div>
+
+      <div id="process-issue-alert" class="alert-box alert-danger"></div>
+
+      <div style="margin-bottom: 16px;">
+        <div class="status-item" style="margin-bottom: 8px;">
+          <div class="status-label">Issue Title</div>
+          <div class="status-value" id="process-issue-title">--</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+          <div class="status-item">
+            <div class="status-label">Category</div>
+            <div class="status-value" id="process-issue-category">--</div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">Reporter & Location</div>
+            <div class="status-value" id="process-issue-reporter">--</div>
+          </div>
+        </div>
+        <div class="status-item" style="margin-bottom: 8px;">
+          <div class="status-label">Description</div>
+          <div class="status-value" id="process-issue-desc" style="font-weight: 400; font-size: 0.9rem;">--</div>
+        </div>
+        <div class="status-item" style="margin-bottom: 16px;">
+          <div class="status-label">Photo Attachment</div>
+          <div class="status-value" id="process-issue-img-container">--</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="issueTargetStatus">Update Status</label>
+        <select id="issueTargetStatus" class="form-input">
+          <option value="In Progress">In Progress</option>
+          <option value="Resolved">Resolved</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="issueResolutionRemarks">Resolution Remarks / Notes</label>
+        <textarea id="issueResolutionRemarks" class="form-input" rows="3" placeholder="Add resolution progress or completion notes..."></textarea>
+      </div>
+
+      <button class="btn" style="background: #10b981; margin-top: 12px;" onclick="submitIssueProcess()">
+        Update Issue Status
+      </button>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/common.js"></script>
+  <script src="../../js/faculty/dashboard.js"></script>
+</body>
+</html>

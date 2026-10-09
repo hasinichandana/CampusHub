@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CampusHub | Admin Control Panel</title>
+  <link rel="stylesheet" href="../../css/global.css">
+  <link rel="stylesheet" href="../../css/dashboard.css">
+  <link rel="stylesheet" href="../../css/responsive.css">
+</head>
+<body class="dashboard-body">
+
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <a href="#" class="sidebar-logo">
+        <div class="sidebar-logo-icon" style="background: #f59e0b;">👑</div>
+        <span>CampusHub</span>
+      </a>
+    </div>
+    <div id="sidebar-navigation" class="sidebar-menu"></div>
+    <div class="sidebar-footer">
+      <button id="logout-btn" class="btn" style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-size: 0.85rem;">
+        Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Wrapper -->
+  <div class="main-wrapper">
+    <!-- Top Navbar -->
+    <header class="navbar">
+      <div class="navbar-left">
+        <h1 class="page-title">System Administration</h1>
+      </div>
+      <div class="navbar-right">
+        <div class="user-pill" onclick="openProfileModal()">
+          <div id="nav-user-avatar" class="user-avatar" style="background: #f59e0b;">A</div>
+          <div class="user-info">
+            <span id="nav-user-name" class="user-name">Loading...</span>
+            <span id="nav-user-role" class="user-role-tag" style="color: #fbbf24;">ADMIN</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="content-area">
+      <!-- Welcome Banner -->
+      <div class="welcome-banner" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.05) 100%); border-color: rgba(245, 158, 11, 0.3);">
+        <h2>Welcome, <span id="admin-name">System Administrator</span>!</h2>
+        <p>System-Wide Privileges Enabled • Full Management Access Across All Departments</p>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-data">
+            <h4>Total Users</h4>
+            <div id="metric-user-count" class="metric-number">5</div>
+          </div>
+          <div class="metric-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">👥</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-data">
+            <h4>Total Departments</h4>
+            <div id="metric-dept-count" class="metric-number">5</div>
+          </div>
+          <div class="metric-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">🏛️</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-data">
+            <h4>Pending Leaves</h4>
+            <div id="metric-pending-leaves" class="metric-number">0</div>
+          </div>
+          <div class="metric-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">📝</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-data">
+            <h4>Open Campus Issues</h4>
+            <div id="metric-open-issues" class="metric-number">0</div>
+          </div>
+          <div class="metric-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">🔧</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-data">
+            <h4>Open Complaints</h4>
+            <div class="metric-number">0</div>
+          </div>
+          <div class="metric-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">💬</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-data">
+            <h4>Pending Documents</h4>
+            <div class="metric-number">0</div>
+          </div>
+          <div class="metric-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">📜</div>
+        </div>
+      </div>
+
+      <!-- All Leave Requests Table Card -->
+      <div class="status-card" style="margin-bottom: 28px;">
+        <div class="card-title">
+          <span>All College Leave Requests</span>
+          <div style="display: flex; gap: 12px;">
+            <select id="admin-dept-filter" class="form-input" style="width: auto; padding: 6px 12px; font-size: 0.85rem;">
+              <option value="">All Departments</option>
+            </select>
+            <select id="admin-status-filter" class="form-input" style="width: auto; padding: 6px 12px; font-size: 0.85rem;">
+              <option value="">All Statuses</option>
+              <option value="Pending">Pending</option>
+              <option value="Approved">Approved</option>
+              <option value="Rejected">Rejected</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+            <thead>
+              <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: #94a3b8; font-size: 0.8rem; text-transform: uppercase;">
+                <th style="padding: 12px 10px;">Student</th>
+                <th style="padding: 12px 10px;">Dept</th>
+                <th style="padding: 12px 10px;">Type</th>
+                <th style="padding: 12px 10px;">Dates</th>
+                <th style="padding: 12px 10px;">Document</th>
+                <th style="padding: 12px 10px;">Status</th>
+                <th style="padding: 12px 10px;">Remarks</th>
+                <th style="padding: 12px 10px;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="admin-leaves-table-body">
+              <tr>
+                <td colspan="8" style="text-align: center; color: #94a3b8; padding: 20px;">
+                  Loading system-wide leave records...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- All Campus Issues Table Card -->
+      <div class="status-card">
+        <div class="card-title">
+          <span>All Campus Reported Issues</span>
+          <div style="display: flex; gap: 12px;">
+            <select id="admin-issue-category-filter" class="form-input" style="width: auto; padding: 6px 12px; font-size: 0.85rem;">
+              <option value="">All Categories</option>
+              <option value="Internet/Wi-Fi">Internet/Wi-Fi</option>
+              <option value="Classroom">Classroom</option>
+              <option value="Laboratory">Laboratory</option>
+              <option value="Electrical">Electrical</option>
+              <option value="Water">Water</option>
+              <option value="Garbage/waste">Garbage/waste</option>
+            </select>
+            <select id="admin-issue-status-filter" class="form-input" style="width: auto; padding: 6px 12px; font-size: 0.85rem;">
+              <option value="">All Statuses</option>
+              <option value="Reported">Reported</option>
+              <option value="Assigned">Assigned</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+              <option value="Closed">Closed</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+            <thead>
+              <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: #94a3b8; font-size: 0.8rem; text-transform: uppercase;">
+                <th style="padding: 12px 10px;">Issue & Category</th>
+                <th style="padding: 12px 10px;">Reporter & Dept</th>
+                <th style="padding: 12px 10px;">Location</th>
+                <th style="padding: 12px 10px;">Assigned To</th>
+                <th style="padding: 12px 10px;">Photo</th>
+                <th style="padding: 12px 10px;">Status</th>
+                <th style="padding: 12px 10px;">Remarks</th>
+                <th style="padding: 12px 10px;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="admin-issues-table-body">
+              <tr>
+                <td colspan="8" style="text-align: center; color: #94a3b8; padding: 20px;">
+                  Loading campus issues...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Admin Review & Override Leave Modal -->
+  <div id="admin-review-leave-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 550px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Admin Leave Review & Override</h3>
+        <button class="modal-close" onclick="closeAdminReviewModal()">&times;</button>
+      </div>
+
+      <div id="admin-review-alert" class="alert-box alert-danger"></div>
+
+      <div style="margin-bottom: 16px;">
+        <div class="status-item" style="margin-bottom: 8px;">
+          <div class="status-label">Student & Department</div>
+          <div class="status-value" id="admin-review-student-name">--</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+          <div class="status-item">
+            <div class="status-label">Leave Type</div>
+            <div class="status-value" id="admin-review-leave-type">--</div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">Duration</div>
+            <div class="status-value" id="admin-review-dates">--</div>
+          </div>
+        </div>
+        <div class="status-item" style="margin-bottom: 8px;">
+          <div class="status-label">Reason</div>
+          <div class="status-value" id="admin-review-reason" style="font-weight: 400; font-size: 0.9rem;">--</div>
+        </div>
+        <div class="status-item" style="margin-bottom: 16px;">
+          <div class="status-label">Attachment</div>
+          <div class="status-value" id="admin-review-doc-container">--</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="adminReviewerRemarks">Admin Remarks</label>
+        <textarea id="adminReviewerRemarks" class="form-input" rows="3" placeholder="Add administrative notes or override rationale..."></textarea>
+      </div>
+
+      <div style="display: flex; gap: 12px; margin-top: 20px;">
+        <button class="btn" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);" onclick="processAdminLeave('Approved')">
+          ✓ Approve Request
+        </button>
+        <button class="btn" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);" onclick="processAdminLeave('Rejected')">
+          ✕ Reject Request
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Assign Issue Modal -->
+  <div id="admin-assign-issue-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Assign Issue to Faculty</h3>
+        <button class="modal-close" onclick="closeAssignIssueModal()">&times;</button>
+      </div>
+
+      <div id="admin-assign-alert" class="alert-box alert-danger"></div>
+
+      <p style="color: #cbd5e1; font-size: 0.9rem; margin-bottom: 16px;">
+        Assigning issue: <strong id="assign-issue-title-text" style="color: #818cf8;">--</strong>
+      </p>
+
+      <div class="form-group">
+        <label class="form-label" for="assignFacultySelect">Select Faculty Member</label>
+        <select id="assignFacultySelect" class="form-input" required>
+          <option value="">Loading faculty members...</option>
+        </select>
+      </div>
+
+      <button class="btn" style="background: #6366f1; margin-top: 12px;" onclick="submitAdminAssignIssue()">
+        Assign Faculty & Set Status to Assigned
+      </button>
+    </div>
+  </div>
+
+  <!-- Admin Close Issue Modal -->
+  <div id="admin-close-issue-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Close Resolved Issue</h3>
+        <button class="modal-close" onclick="closeCloseIssueModal()">&times;</button>
+      </div>
+
+      <div id="admin-close-alert" class="alert-box alert-danger"></div>
+
+      <p style="color: #cbd5e1; font-size: 0.9rem; margin-bottom: 16px;">
+        Closing issue: <strong id="close-issue-title-text" style="color: #34d399;">--</strong>
+      </p>
+
+      <div class="form-group">
+        <label class="form-label" for="adminCloseRemarks">Closing Administrative Remarks</label>
+        <textarea id="adminCloseRemarks" class="form-input" rows="3" placeholder="Confirm resolution details or closing notes..."></textarea>
+      </div>
+
+      <button class="btn" style="background: rgba(148, 163, 184, 0.3); color: #f8fafc; margin-top: 12px;" onclick="submitAdminCloseIssue()">
+        Mark Issue Closed
+      </button>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/common.js"></script>
+  <script src="../../js/admin/dashboard.js"></script>
+</body>
+</html>

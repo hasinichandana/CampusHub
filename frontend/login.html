@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CampusHub | Portal Login</title>
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-logo">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+          </svg>
+        </div>
+        <h2>CampusHub</h2>
+        <p>Smart College Management Platform</p>
+      </div>
+
+      <div id="alert-message" class="alert-box alert-danger"></div>
+
+      <form id="login-form">
+        <div class="form-group">
+          <label class="form-label" for="email">College Email Address</label>
+          <input type="email" id="email" class="form-input" placeholder="e.g. student@campushub.edu" required autocomplete="email">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input type="password" id="password" class="form-input" placeholder="••••••••••••" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn">
+          Sign In to Portal
+        </button>
+      </form>
+
+      <div class="demo-credentials-box">
+        <div class="demo-title">
+          <span>1-Click Demo Login</span>
+          <span style="font-size: 0.7rem; color: #94a3b8;">Phase 5 Seed</span>
+        </div>
+        <div class="demo-buttons">
+          <button class="btn-demo" onclick="quickFill('admin@campushub.edu', 'AdminPassword123')">👑 Admin</button>
+          <button class="btn-demo" onclick="quickFill('faculty.cse@campushub.edu', 'FacultyPassword123')">👨‍🏫 Faculty</button>
+          <button class="btn-demo" onclick="quickFill('student.cse@campushub.edu', 'StudentPassword123')">🎓 Student</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // If already authenticated, redirect to role dashboard
+      const user = Auth.getUser();
+      const token = Auth.getToken();
+      if (token && user) {
+        Auth.redirectToDashboard(user.role);
+      }
+
+      const form = document.getElementById('login-form');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const alertBox = document.getElementById('alert-message');
+        const submitBtn = document.getElementById('submit-btn');
+
+        alertBox.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Authenticating...';
+
+        const result = await Auth.login(email, password);
+        if (!result.success) {
+          alertBox.textContent = result.message;
+          alertBox.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Sign In to Portal';
+        }
+      });
+    });
+
+    function quickFill(email, password) {
+      document.getElementById('email').value = email;
+      document.getElementById('password').value = password;
+      document.getElementById('login-form').dispatchEvent(new Event('submit'));
+    }
+  </script>
+</body>
+</html>

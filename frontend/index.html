@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CampusHub | System Health & Diagnostics</title>
+  <link rel="stylesheet" href="css/global.css">
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <span class="brand-badge">CAMPUSHUB PLATFORM</span>
+      <h1>Phase 1: Project Foundation</h1>
+      <p>Centralized College Management Platform System Health & API Diagnostic</p>
+    </div>
+
+    <div class="status-card">
+      <div class="card-title">
+        <span>System Status</span>
+        <span id="status-indicator" class="pulse-indicator"></span>
+      </div>
+
+      <div class="status-grid">
+        <div class="status-item">
+          <div class="status-label">Express Backend API</div>
+          <div class="status-value">
+            <span id="server-status" class="badge badge-warning">Testing...</span>
+          </div>
+        </div>
+
+        <div class="status-item">
+          <div class="status-label">MongoDB Database</div>
+          <div class="status-value">
+            <span id="db-status" class="badge badge-warning">Testing...</span>
+          </div>
+        </div>
+
+        <div class="status-item">
+          <div class="status-label">Departments Count</div>
+          <div class="status-value" id="dept-count">0</div>
+        </div>
+
+        <div class="status-item">
+          <div class="status-label">Users Count</div>
+          <div class="status-value" id="user-count">0</div>
+        </div>
+
+        <div class="status-item">
+          <div class="status-label">Last Ping Time</div>
+          <div class="status-value" id="timestamp">--:--:--</div>
+        </div>
+      </div>
+
+      <button id="check-health-btn" class="btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+        Ping Backend Health Endpoint
+      </button>
+
+      <a href="login.html" class="btn" style="margin-top: 12px; background: rgba(16, 185, 129, 0.2); color: #34d399; text-decoration: none; border: 1px solid rgba(16, 185, 129, 0.4);">
+        🔑 Go to Portal Login Page (Phase 5)
+      </a>
+
+      <div class="status-label" style="margin-top: 20px;">API Response Stream</div>
+      <pre id="raw-response" class="raw-response">Awaiting test connection...</pre>
+    </div>
+
+    <div class="footer-text">
+      CampusHub Phase 1 Complete • Next Phase: Database Foundation & Schema Models
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

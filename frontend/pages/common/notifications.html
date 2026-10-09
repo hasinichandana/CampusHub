@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CampusHub | Notifications</title>
+  <link rel="stylesheet" href="../../css/global.css">
+  <style>
+    .notif-container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .notif-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .notif-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+    .notif-actions {
+      display: flex;
+      gap: 12px;
+    }
+    .btn-sm {
+      padding: 8px 14px;
+      font-size: 13px;
+      border-radius: 8px;
+    }
+    .notif-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .notif-card {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      transition: all 0.2s ease;
+    }
+    .notif-card.unread {
+      border-left: 4px solid #3b82f6;
+      background: rgba(30, 58, 138, 0.25);
+    }
+    .notif-body {
+      flex: 1;
+      padding-right: 16px;
+    }
+    .notif-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+    }
+    .notif-subject {
+      font-size: 16px;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin-bottom: 6px;
+    }
+    .notif-msg {
+      font-size: 14px;
+      color: #94a3b8;
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+    .notif-time {
+      font-size: 12px;
+      color: #64748b;
+    }
+    .notif-controls {
+      display: flex;
+      gap: 8px;
+    }
+    .empty-notif {
+      text-align: center;
+      padding: 40px;
+      color: #64748b;
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="notif-container">
+    <div class="notif-header">
+      <div>
+        <div class="notif-title">🔔 In-App Notifications</div>
+        <p style="color: #94a3b8; font-size: 14px;">Stay updated with leaves, issues, complaints, events, and announcements.</p>
+      </div>
+      <div class="notif-actions">
+        <button id="mark-all-btn" class="btn btn-sm" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa;">Mark All as Read</button>
+        <button id="back-btn" class="btn btn-sm" style="background: rgba(148, 163, 184, 0.2); color: #cbd5e1;">Back to Dashboard</button>
+      </div>
+    </div>
+
+    <div id="notif-list" class="notif-list">
+      <div class="empty-notif">Loading notifications...</div>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const userRole = localStorage.getItem('role') || 'student';
+
+    document.getElementById('back-btn').addEventListener('click', () => {
+      window.location.href = `../${userRole}/dashboard.html`;
+    });
+
+    async function fetchNotifications() {
+      if (!token) {
+        window.location.href = '../../login.html';
+        return;
+      }
+      try {
+        const res = await fetch('http://localhost:5000/api/notifications', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        
+        const container = document.getElementById('notif-list');
+        if (!data.data || data.data.length === 0) {
+          container.innerHTML = '<div class="empty-notif">No notifications found.</div>';
+          return;
+        }
+
+        container.innerHTML = data.data.map(n => `
+          <div class="notif-card ${!n.isRead ? 'unread' : ''}">
+            <div class="notif-body">
+              <span class="notif-badge">${n.type}</span>
+              <div class="notif-subject">${escapeHtml(n.title)}</div>
+              <div class="notif-msg">${escapeHtml(n.message)}</div>
+              <div class="notif-time">${new Date(n.createdAt).toLocaleString()}</div>
+            </div>
+            <div class="notif-controls">
+              ${!n.isRead ? `<button onclick="markRead('${n._id}')" class="btn btn-sm" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">Read</button>` : ''}
+              <button onclick="deleteNotif('${n._id}')" class="btn btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">Delete</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Failed to load notifications:', err);
+      }
+    }
+
+    async function markRead(id) {
+      await fetch(`http://localhost:5000/api/notifications/${id}/read`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchNotifications();
+    }
+
+    async function deleteNotif(id) {
+      await fetch(`http://localhost:5000/api/notifications/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchNotifications();
+    }
+
+    document.getElementById('mark-all-btn').addEventListener('click', async () => {
+      await fetch('http://localhost:5000/api/notifications/read-all', {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchNotifications();
+    });
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    fetchNotifications();
+  </script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CampusHub | System Analytics</title>
+  <link rel="stylesheet" href="../../css/global.css">
+  <style>
+    .analytics-container {
+      max-width: 1100px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .metric-card {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .metric-val {
+      font-size: 28px;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-top: 8px;
+    }
+    .metric-sub {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="analytics-container">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+      <div>
+        <h1 style="color: #f8fafc; font-size: 24px;">📊 System-Wide Executive Analytics</h1>
+        <p style="color: #94a3b8; font-size: 14px;">Platform metrics across Users, Leaves, Issues, Complaints, Documents, Events, and Announcements.</p>
+      </div>
+      <button onclick="window.location.href='dashboard.html'" class="btn" style="background: rgba(148, 163, 184, 0.2); color: #cbd5e1;">Back to Dashboard</button>
+    </div>
+
+    <div id="metrics" class="metrics-grid">
+      <div class="metric-card">
+        <div style="color:#94a3b8; font-size:14px;">Total Platform Users</div>
+        <div id="val-users" class="metric-val">--</div>
+        <div id="sub-users" class="metric-sub">Loading...</div>
+      </div>
+
+      <div class="metric-card">
+        <div style="color:#94a3b8; font-size:14px;">Leave Requests</div>
+        <div id="val-leaves" class="metric-val">--</div>
+        <div id="sub-leaves" class="metric-sub">Loading...</div>
+      </div>
+
+      <div class="metric-card">
+        <div style="color:#94a3b8; font-size:14px;">Campus Issues</div>
+        <div id="val-issues" class="metric-val">--</div>
+        <div id="sub-issues" class="metric-sub">Loading...</div>
+      </div>
+
+      <div class="metric-card">
+        <div style="color:#94a3b8; font-size:14px;">Complaints</div>
+        <div id="val-complaints" class="metric-val">--</div>
+        <div id="sub-complaints" class="metric-sub">Loading...</div>
+      </div>
+
+      <div class="metric-card">
+        <div style="color:#94a3b8; font-size:14px;">Document Requests</div>
+        <div id="val-docs" class="metric-val">--</div>
+        <div id="sub-docs" class="metric-sub">Loading...</div>
+      </div>
+
+      <div class="metric-card">
+        <div style="color:#94a3b8; font-size:14px;">Events</div>
+        <div id="val-events" class="metric-val">--</div>
+        <div id="sub-events" class="metric-sub">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+
+    async function loadAnalytics() {
+      if (!token) {
+        window.location.href = '../../login.html';
+        return;
+      }
+      try {
+        const res = await fetch('http://localhost:5000/api/analytics/admin/overview', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.data) {
+          const d = data.data;
+          document.getElementById('val-users').textContent = d.users.total;
+          document.getElementById('sub-users').textContent = `${d.users.students} Students • ${d.users.faculty} Faculty • ${d.users.admins} Admins`;
+
+          document.getElementById('val-leaves').textContent = d.leaves.total;
+          document.getElementById('sub-leaves').textContent = `${d.leaves.pending} Pending approval`;
+
+          document.getElementById('val-issues').textContent = d.issues.total;
+          document.getElementById('sub-issues').textContent = `${d.issues.open} Open issues`;
+
+          document.getElementById('val-complaints').textContent = d.complaints.total;
+          document.getElementById('sub-complaints').textContent = `${d.complaints.open} Open complaints`;
+
+          document.getElementById('val-docs').textContent = d.documents.total;
+          document.getElementById('sub-docs').textContent = `${d.documents.pending} Pending review`;
+
+          document.getElementById('val-events').textContent = d.events.total;
+          document.getElementById('sub-events').textContent = `${d.events.published} Published events`;
+        }
+      } catch (err) {
+        console.error('Analytics load error:', err);
+      }
+    }
+
+    loadAnalytics();
+  </script>
+</body>
+</html>

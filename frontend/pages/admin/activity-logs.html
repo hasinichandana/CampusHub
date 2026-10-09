@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CampusHub | Activity Logs Audit</title>
+  <link rel="stylesheet" href="../../css/global.css">
+  <style>
+    .logs-container {
+      max-width: 1100px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .logs-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .filter-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .select-sm, .input-sm {
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #f8fafc;
+      font-size: 13px;
+    }
+    .logs-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(30, 41, 59, 0.7);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .logs-table th, .logs-table td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 13px;
+    }
+    .logs-table th {
+      background: rgba(15, 23, 42, 0.6);
+      color: #94a3b8;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+    .badge-action {
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+    }
+  </style>
+</head>
+<body>
+  <div class="logs-container">
+    <div class="logs-header">
+      <div>
+        <h1 style="color: #f8fafc; font-size: 24px;">📜 Administrative Activity Audit Logs</h1>
+        <p style="color: #94a3b8; font-size: 14px;">Audit trail of user logins, requests, approvals, and system events.</p>
+      </div>
+      <button onclick="window.location.href='dashboard.html'" class="btn" style="background: rgba(148, 163, 184, 0.2); color: #cbd5e1;">Back to Dashboard</button>
+    </div>
+
+    <div class="filter-bar">
+      <select id="module-filter" class="select-sm" onchange="fetchLogs()">
+        <option value="">All Modules</option>
+        <option value="AUTH">AUTH</option>
+        <option value="LEAVE">LEAVE</option>
+        <option value="ISSUE">ISSUE</option>
+        <option value="COMPLAINT">COMPLAINT</option>
+        <option value="DOCUMENT">DOCUMENT</option>
+        <option value="EVENT">EVENT</option>
+        <option value="ANNOUNCEMENT">ANNOUNCEMENT</option>
+      </select>
+
+      <select id="action-filter" class="select-sm" onchange="fetchLogs()">
+        <option value="">All Actions</option>
+        <option value="LOGIN">LOGIN</option>
+        <option value="CREATE">CREATE</option>
+        <option value="UPDATE">UPDATE</option>
+        <option value="APPROVE">APPROVE</option>
+        <option value="REJECT">REJECT</option>
+        <option value="ASSIGN">ASSIGN</option>
+        <option value="RESOLVE">RESOLVE</option>
+        <option value="CLOSE">CLOSE</option>
+      </select>
+    </div>
+
+    <table class="logs-table">
+      <thead>
+        <tr>
+          <th>Date & Time</th>
+          <th>User</th>
+          <th>Module</th>
+          <th>Action</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody id="logs-body">
+        <tr><td colspan="5" style="text-align:center;">Loading audit logs...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+
+    async function fetchLogs() {
+      if (!token) {
+        window.location.href = '../../login.html';
+        return;
+      }
+      const mod = document.getElementById('module-filter').value;
+      const act = document.getElementById('action-filter').value;
+
+      let url = 'http://localhost:5000/api/activity-logs?limit=50';
+      if (mod) url += `&module=${mod}`;
+      if (act) url += `&action=${act}`;
+
+      try {
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+
+        const body = document.getElementById('logs-body');
+        if (!data.data || data.data.length === 0) {
+          body.innerHTML = '<tr><td colspan="5" style="text-align:center;">No activity logs found.</td></tr>';
+          return;
+        }
+
+        body.innerHTML = data.data.map(log => `
+          <tr>
+            <td style="color: #64748b;">${new Date(log.createdAt).toLocaleString()}</td>
+            <td><strong>${escapeHtml(log.userId ? log.userId.name : 'System')}</strong><br><small style="color: #64748b;">${escapeHtml(log.userId ? log.userId.email : '')}</small></td>
+            <td><span style="color: #cbd5e1; font-weight: 600;">${log.module}</span></td>
+            <td><span class="badge-action">${log.action}</span></td>
+            <td style="color: #cbd5e1;">${escapeHtml(log.description)}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error('Failed to load logs:', err);
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    fetchLogs();
+  </script>
+</body>
+</html>

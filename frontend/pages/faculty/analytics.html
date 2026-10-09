@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CampusHub | Department Analytics</title>
+  <link rel="stylesheet" href="../../css/global.css">
+  <style>
+    .analytics-container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .metric-card {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .metric-val {
+      font-size: 28px;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="analytics-container">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+      <div>
+        <h1 style="color: #f8fafc; font-size: 24px;">📊 Department Analytics & Overview</h1>
+        <p style="color: #94a3b8; font-size: 14px;">Department-scoped metrics for students, leaves, issues, and pending actions.</p>
+      </div>
+      <button onclick="window.location.href='dashboard.html'" class="btn" style="background: rgba(148, 163, 184, 0.2); color: #cbd5e1;">Back to Dashboard</button>
+    </div>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div style="color:#94a3b8; font-size:14px;">Department Students</div>
+        <div id="val-students" class="metric-val">--</div>
+      </div>
+
+      <div class="metric-card">
+        <div style="color:#94a3b8; font-size:14px;">Pending Leave Approvals</div>
+        <div id="val-pending" class="metric-val" style="color: #f59e0b;">--</div>
+      </div>
+
+      <div class="metric-card">
+        <div style="color:#94a3b8; font-size:14px;">Department Events</div>
+        <div id="val-events" class="metric-val">--</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+
+    async function loadFacultyAnalytics() {
+      if (!token) {
+        window.location.href = '../../login.html';
+        return;
+      }
+      try {
+        const res = await fetch('http://localhost:5000/api/analytics/faculty/overview', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.data) {
+          document.getElementById('val-students').textContent = data.data.studentCount;
+          document.getElementById('val-pending').textContent = data.data.pendingActionCount;
+          document.getElementById('val-events').textContent = data.data.eventCount;
+        }
+      } catch (err) {
+        console.error('Faculty analytics load error:', err);
+      }
+    }
+
+    loadFacultyAnalytics();
+  </script>
+</body>
+</html>

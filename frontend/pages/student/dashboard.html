@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CampusHub | Student Dashboard</title>
+  <link rel="stylesheet" href="../../css/global.css">
+  <link rel="stylesheet" href="../../css/dashboard.css">
+  <link rel="stylesheet" href="../../css/responsive.css">
+</head>
+<body class="dashboard-body">
+
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <a href="#" class="sidebar-logo">
+        <div class="sidebar-logo-icon">🎓</div>
+        <span>CampusHub</span>
+      </a>
+    </div>
+    <div id="sidebar-navigation" class="sidebar-menu"></div>
+    <div class="sidebar-footer">
+      <button id="logout-btn" class="btn" style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-size: 0.85rem;">
+        Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Wrapper -->
+  <div class="main-wrapper">
+    <!-- Top Navbar -->
+    <header class="navbar">
+      <div class="navbar-left">
+        <h1 class="page-title">Student Dashboard</h1>
+      </div>
+      <div class="navbar-right">
+        <button class="btn" style="padding: 8px 14px; font-size: 0.85rem; background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99, 102, 241, 0.4);" onclick="openReportIssueModal()">
+          🔧 Report Issue
+        </button>
+        <button class="btn" style="padding: 8px 14px; font-size: 0.85rem;" onclick="openApplyLeaveModal()">
+          📝 Apply Leave
+        </button>
+        <div class="user-pill" onclick="openProfileModal()">
+          <div id="nav-user-avatar" class="user-avatar">S</div>
+          <div class="user-info">
+            <span id="nav-user-name" class="user-name">Loading...</span>
+            <span id="nav-user-role" class="user-role-tag">STUDENT</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="content-area">
+      <!-- Welcome Banner -->
+      <div class="welcome-banner">
+        <h2>Welcome back, <span id="student-name">Student</span>!</h2>
+        <p>Department: <strong id="student-dept">Computer Science and Engineering</strong></p>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-data">
+            <h4>Pending Leaves</h4>
+            <div id="metric-pending-leaves" class="metric-number">0</div>
+          </div>
+          <div class="metric-icon">📝</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-data">
+            <h4>Open Issues</h4>
+            <div id="metric-open-issues" class="metric-number">0</div>
+          </div>
+          <div class="metric-icon">🔧</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-data">
+            <h4>Active Complaints</h4>
+            <div class="metric-number">0</div>
+          </div>
+          <div class="metric-icon">💬</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-data">
+            <h4>Document Requests</h4>
+            <div class="metric-number">0</div>
+          </div>
+          <div class="metric-icon">📜</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-data">
+            <h4>Upcoming Events</h4>
+            <div class="metric-number">0</div>
+          </div>
+          <div class="metric-icon">📅</div>
+        </div>
+      </div>
+
+      <!-- My Leave Requests Card & Table -->
+      <div class="status-card" style="margin-bottom: 28px;">
+        <div class="card-title">
+          <span>My Leave Applications</span>
+          <button class="btn" style="padding: 6px 14px; font-size: 0.8rem; width: auto;" onclick="openApplyLeaveModal()">
+            New Leave Request
+          </button>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+            <thead>
+              <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: #94a3b8; font-size: 0.8rem; text-transform: uppercase;">
+                <th style="padding: 12px 10px;">Type</th>
+                <th style="padding: 12px 10px;">Dates</th>
+                <th style="padding: 12px 10px;">Reason</th>
+                <th style="padding: 12px 10px;">Document</th>
+                <th style="padding: 12px 10px;">Status</th>
+                <th style="padding: 12px 10px;">Remarks</th>
+                <th style="padding: 12px 10px;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="student-leaves-table-body">
+              <tr>
+                <td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">
+                  Loading leave records...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- My Reported Issues Card & Table -->
+      <div class="status-card">
+        <div class="card-title">
+          <span>My Reported Campus Issues</span>
+          <button class="btn" style="padding: 6px 14px; font-size: 0.8rem; width: auto; background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99, 102, 241, 0.4);" onclick="openReportIssueModal()">
+            Report New Issue
+          </button>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+            <thead>
+              <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: #94a3b8; font-size: 0.8rem; text-transform: uppercase;">
+                <th style="padding: 12px 10px;">Issue & Category</th>
+                <th style="padding: 12px 10px;">Location</th>
+                <th style="padding: 12px 10px;">Reported Date</th>
+                <th style="padding: 12px 10px;">Photo</th>
+                <th style="padding: 12px 10px;">Status</th>
+                <th style="padding: 12px 10px;">Assigned / Remarks</th>
+              </tr>
+            </thead>
+            <tbody id="student-issues-table-body">
+              <tr>
+                <td colspan="6" style="text-align: center; color: #94a3b8; padding: 20px;">
+                  Loading campus issues...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Apply Leave Modal -->
+  <div id="apply-leave-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 550px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Submit Leave Application</h3>
+        <button class="modal-close" onclick="closeApplyLeaveModal()">&times;</button>
+      </div>
+
+      <div id="leave-alert" class="alert-box alert-danger"></div>
+
+      <form id="apply-leave-form">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label class="form-label" for="fromDate">From Date</label>
+            <input type="date" id="fromDate" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="toDate">To Date</label>
+            <input type="date" id="toDate" class="form-input" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="leaveType">Leave Type</label>
+          <select id="leaveType" class="form-input" required>
+            <option value="Sick Leave">Sick Leave</option>
+            <option value="Casual Leave">Casual Leave</option>
+            <option value="Academic Leave">Academic Leave</option>
+            <option value="Duty Leave">Duty Leave</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="reason">Reason for Leave</label>
+          <textarea id="reason" class="form-input" rows="3" placeholder="Provide details regarding your leave request..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="supportingDocument">Supporting Document (Optional)</label>
+          <input type="file" id="supportingDocument" class="form-input" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+          <span style="font-size: 0.75rem; color: #64748b;">Allowed formats: PDF, DOC, PNG, JPG (Max 5MB)</span>
+        </div>
+
+        <button type="submit" id="submit-leave-btn" class="btn">
+          Submit Leave Request
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Report Issue Modal -->
+  <div id="report-issue-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 550px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Report Campus Issue</h3>
+        <button class="modal-close" onclick="closeReportIssueModal()">&times;</button>
+      </div>
+
+      <div id="issue-alert" class="alert-box alert-danger"></div>
+
+      <form id="report-issue-form">
+        <div class="form-group">
+          <label class="form-label" for="issue-title">Issue Title</label>
+          <input type="text" id="issue-title" class="form-input" placeholder="e.g. Wi-Fi router not working in CSE Lab 2" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label class="form-label" for="issue-category">Category</label>
+            <select id="issue-category" class="form-input" required>
+              <option value="Internet/Wi-Fi">Internet/Wi-Fi</option>
+              <option value="Classroom">Classroom</option>
+              <option value="Laboratory">Laboratory</option>
+              <option value="Electrical">Electrical</option>
+              <option value="Water">Water</option>
+              <option value="Streetlights">Streetlights</option>
+              <option value="Garbage/waste">Garbage/waste</option>
+              <option value="Potholes">Potholes</option>
+              <option value="Drainage">Drainage</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="issue-location">Location / Room No.</label>
+            <input type="text" id="issue-location" class="form-input" placeholder="e.g. Block A, Room 302" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="issue-description">Issue Description</label>
+          <textarea id="issue-description" class="form-input" rows="3" placeholder="Describe the issue details and severity..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="issue-image">Upload Photo (Optional)</label>
+          <input type="file" id="issue-image" class="form-input" accept=".png,.jpg,.jpeg">
+          <span style="font-size: 0.75rem; color: #64748b;">Allowed formats: PNG, JPG, JPEG (Max 5MB)</span>
+        </div>
+
+        <button type="submit" id="submit-issue-btn" class="btn" style="background: #6366f1;">
+          Submit Campus Issue
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="../../js/api.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script src="../../js/common.js"></script>
+  <script src="../../js/student/dashboard.js"></script>
+</body>
+</html>
