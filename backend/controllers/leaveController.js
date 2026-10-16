@@ -1,24 +1,84 @@
+const path = require('path');
+const fs = require('fs');
 const LeaveRequest = require('../models/LeaveRequest');
 const Department = require('../models/Department');
 const User = require('../models/User');
 const { createNotification, notifyManyUsers } = require('../utils/notificationHelper');
 const { logActivity } = require('../utils/activityLogger');
+const { parsePagination } = require('../utils/queryFilters');
+
+const getSafeLeaveDocumentPath = (filePath) => {
+  if (typeof filePath !== 'string') return null;
+
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  if (!normalizedPath.startsWith('uploads/leaves/')) return null;
+
+  const uploadDirectory = path.resolve(__dirname, '../uploads/leaves');
+  const absolutePath = path.resolve(__dirname, '..', normalizedPath);
+  const relativePath = path.relative(uploadDirectory, absolutePath);
+  if (!relativePath || relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    return null;
+  }
+
+  return absolutePath;
+};
+
+const canAccessLeaveDocument = (leave, user) => {
+  if (!leave || !user) return false;
+
+  const idValue = (value) => value && typeof value === 'object' && value._id
+    ? value._id.toString()
+    : value?.toString();
+
+  if (user.role === 'admin') return true;
+  if (user.role === 'student') {
+    return idValue(leave.studentId) === idValue(user._id);
+  }
+  if (user.role === 'faculty') {
+    const userDepartmentId = user.departmentId?._id || user.departmentId;
+    return Boolean(userDepartmentId && leave.departmentId)
+      && idValue(leave.departmentId) === idValue(userDepartmentId);
+  }
+  return false;
+};
+
+const removeUploadedFile = async (req) => {
+  if (!req.file) return;
+  try {
+    await fs.promises.unlink(req.file.path);
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+};
 
 // @desc    Create a new leave request (Student)
 // @route   POST /api/leaves
 // @access  Private (Student)
 const createLeaveRequest = async (req, res, next) => {
+  let leaveRequestCreated = false;
   try {
     const { fromDate, toDate, leaveType, reason } = req.body;
 
     if (!fromDate || !toDate || !leaveType || !reason) {
+      await removeUploadedFile(req);
       return res.status(400).json({
         success: false,
         message: 'Please provide fromDate, toDate, leaveType, and reason'
       });
     }
 
-    if (new Date(fromDate) > new Date(toDate)) {
+    const startDate = new Date(fromDate);
+    const endDate = new Date(toDate);
+    if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime())) {
+      await removeUploadedFile(req);
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide valid fromDate and toDate values'
+      });
+    }
+
+    if (startDate > endDate) {
+      await removeUploadedFile(req);
       return res.status(400).json({
         success: false,
         message: 'Start date (fromDate) cannot be after end date (toDate)'
@@ -28,6 +88,7 @@ const createLeaveRequest = async (req, res, next) => {
     // Ensure student has assigned department
     const userDeptId = req.user.departmentId?._id || req.user.departmentId;
     if (!userDeptId && req.user.role !== 'admin') {
+      await removeUploadedFile(req);
       return res.status(400).json({
         success: false,
         message: 'Student must belong to a valid department to submit a leave request'
@@ -49,6 +110,7 @@ const createLeaveRequest = async (req, res, next) => {
       supportingDocument: supportingDocumentPath,
       status: 'Pending'
     });
+    leaveRequestCreated = true;
 
     const populatedLeave = await LeaveRequest.findById(leaveRequest._id)
       .populate('studentId', 'name email phone')
@@ -83,6 +145,13 @@ const createLeaveRequest = async (req, res, next) => {
       data: populatedLeave
     });
   } catch (error) {
+    if (!leaveRequestCreated) {
+      try {
+        await removeUploadedFile(req);
+      } catch (cleanupError) {
+        return next(cleanupError);
+      }
+    }
     next(error);
   }
 };
@@ -121,9 +190,10 @@ const getLeaves = async (req, res, next) => {
       if (dateTo) query.fromDate.$lte = new Date(dateTo);
     }
 
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 10;
-    const skip = (pageNum - 1) * limitNum;
+    const pagination = parsePagination(page, limit);
+    if (!pagination) {
+      return res.status(400).json({ success: false, message: 'page must be positive and limit must be between 1 and 100' });
+    }
 
     const total = await LeaveRequest.countDocuments(query);
     const leaves = await LeaveRequest.find(query)
@@ -131,17 +201,17 @@ const getLeaves = async (req, res, next) => {
       .populate('departmentId', 'name code')
       .populate('reviewedBy', 'name email role')
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
+      .skip(pagination.skip)
+      .limit(pagination.limit);
 
     res.status(200).json({
       success: true,
       count: leaves.length,
       pagination: {
-        page: pageNum,
-        limit: limitNum,
+        page: pagination.page,
+        limit: pagination.limit,
         total,
-        totalPages: Math.ceil(total / limitNum) || 1
+        totalPages: Math.ceil(total / pagination.limit) || 1
       },
       data: leaves
     });
@@ -327,10 +397,72 @@ const cancelLeaveRequest = async (req, res, next) => {
   }
 };
 
+// @desc    Download leave supporting document (Student owner, Dept Faculty, Admin)
+// @route   GET /api/leaves/:id/download
+// @access  Private
+const downloadLeaveDocument = async (req, res, next) => {
+  try {
+    const leave = await LeaveRequest.findById(req.params.id);
+
+    if (!leave) {
+      return res.status(404).json({
+        success: false,
+        message: 'Leave request not found'
+      });
+    }
+
+    if (!canAccessLeaveDocument(leave, req.user)) {
+      const message = req.user.role === 'student'
+        ? "Forbidden: You cannot access another student's leave attachment"
+        : 'Forbidden: Leave attachment access is restricted to your department';
+      return res.status(403).json({ success: false, message });
+    }
+
+    if (!leave.supportingDocument) {
+      return res.status(404).json({
+        success: false,
+        message: 'No supporting document attached to this leave request'
+      });
+    }
+
+    const absoluteFilePath = getSafeLeaveDocumentPath(leave.supportingDocument);
+    if (!absoluteFilePath) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Invalid file path'
+      });
+    }
+
+    if (!fs.existsSync(absoluteFilePath) || !fs.statSync(absoluteFilePath).isFile()) {
+      return res.status(404).json({
+        success: false,
+        message: 'Supporting document file not found on server'
+      });
+    }
+
+    // Activity Log
+    await logActivity({
+      req,
+      action: 'DOWNLOAD',
+      module: 'LEAVE',
+      entityType: 'LeaveRequest',
+      entityId: leave._id,
+      description: 'Downloaded leave supporting document'
+    });
+
+    res.download(absoluteFilePath, path.basename(leave.supportingDocument));
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createLeaveRequest,
   getLeaves,
   getLeaveById,
   updateLeaveStatus,
-  cancelLeaveRequest
+  cancelLeaveRequest,
+  downloadLeaveDocument,
+  getSafeLeaveDocumentPath,
+  canAccessLeaveDocument
 };

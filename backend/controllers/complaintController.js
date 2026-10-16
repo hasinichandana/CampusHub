@@ -1,7 +1,10 @@
+const path = require('path');
+const fs = require('fs');
 const Complaint = require('../models/Complaint');
 const User = require('../models/User');
 const { createNotification, notifyManyUsers } = require('../utils/notificationHelper');
 const { logActivity } = require('../utils/activityLogger');
+const { addTextSearch, parsePagination } = require('../utils/queryFilters');
 
 const VALID_COMPLAINT_TRANSITIONS = {
   Submitted: ['Assigned', 'In Progress'],
@@ -112,17 +115,15 @@ const getComplaints = async (req, res, next) => {
     if (status) query.status = status;
     if (category) query.category = category;
 
-    const searchTerm = q || search;
-    if (searchTerm) {
-      query.$or = [
-        { subject: { $regex: searchTerm, $options: 'i' } },
-        { description: { $regex: searchTerm, $options: 'i' } }
-      ];
+    const searchError = addTextSearch(query, q || search, ['subject', 'description']);
+    if (searchError) {
+      return res.status(400).json({ success: false, message: searchError });
     }
 
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 10;
-    const skip = (pageNum - 1) * limitNum;
+    const pagination = parsePagination(page, limit);
+    if (!pagination) {
+      return res.status(400).json({ success: false, message: 'page must be positive and limit must be between 1 and 100' });
+    }
 
     const total = await Complaint.countDocuments(query);
     const complaints = await Complaint.find(query)
@@ -130,17 +131,17 @@ const getComplaints = async (req, res, next) => {
       .populate('departmentId', 'name code')
       .populate('assignedTo', 'name email role phone')
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
+      .skip(pagination.skip)
+      .limit(pagination.limit);
 
     res.status(200).json({
       success: true,
       count: complaints.length,
       pagination: {
-        page: pageNum,
-        limit: limitNum,
+        page: pagination.page,
+        limit: pagination.limit,
         total,
-        totalPages: Math.ceil(total / limitNum) || 1
+        totalPages: Math.ceil(total / pagination.limit) || 1
       },
       data: complaints
     });
@@ -369,10 +370,87 @@ const updateComplaintStatus = async (req, res, next) => {
   }
 };
 
+// @desc    Download complaint attachment (Student owner, Assigned Faculty/Dept Faculty, Admin)
+// @route   GET /api/complaints/:id/download
+// @access  Private
+const downloadComplaintAttachment = async (req, res, next) => {
+  try {
+    const complaint = await Complaint.findById(req.params.id);
+
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message: 'Complaint not found'
+      });
+    }
+
+    // Role Access Checks
+    if (req.user.role === 'student') {
+      if (complaint.studentId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: "Forbidden: You cannot access another student's complaint attachment"
+        });
+      }
+    } else if (req.user.role === 'faculty') {
+      const userDeptId = req.user.departmentId?._id || req.user.departmentId;
+      const isAssigned = complaint.assignedTo && complaint.assignedTo.toString() === req.user._id.toString();
+      const isSameDept = complaint.departmentId.toString() === userDeptId.toString();
+
+      if (!isAssigned && !isSameDept) {
+        return res.status(403).json({
+          success: false,
+          message: 'Forbidden: Faculty access restricted to assigned complaints or own department'
+        });
+      }
+    }
+
+    if (!complaint.attachment) {
+      return res.status(404).json({
+        success: false,
+        message: 'No attachment found for this complaint'
+      });
+    }
+
+    const absoluteFilePath = path.resolve(__dirname, '..', complaint.attachment);
+    const uploadBase = path.resolve(__dirname, '../uploads');
+
+    // Prevent Path Traversal
+    if (!absoluteFilePath.startsWith(uploadBase)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Invalid file path'
+      });
+    }
+
+    if (!fs.existsSync(absoluteFilePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Complaint attachment file not found on server'
+      });
+    }
+
+    // Activity Log
+    await logActivity({
+      req,
+      action: 'DOWNLOAD',
+      module: 'COMPLAINT',
+      entityType: 'Complaint',
+      entityId: complaint._id,
+      description: 'Downloaded complaint attachment'
+    });
+
+    res.download(absoluteFilePath, path.basename(complaint.attachment));
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createComplaint,
   getComplaints,
   getComplaintById,
   assignComplaint,
-  updateComplaintStatus
+  updateComplaintStatus,
+  downloadComplaintAttachment
 };

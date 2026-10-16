@@ -67,3 +67,16 @@ CampusHub/
 
 4. Verify health endpoint:
    Open `http://localhost:5000/api/health` or open `frontend/index.html` in your browser.
+
+5. Repair legacy academic resource records with missing, invalid, or unsafe files:
+   ```bash
+   cd backend
+   npm run repair:academic-resources
+   ```
+   The command preserves valid uploaded files and replaces invalid sample records with original, downloadable PDF learning handouts.
+
+## Email authentication setup
+
+Copy `backend/.env.example` to `backend/.env` and configure the SMTP host, port, TLS mode, username, password, and sender address using credentials from your email provider. Keep the real `.env` file private and never commit SMTP credentials.
+
+Public registration creates student accounts with a user-chosen password and accepts any valid email address. New accounts must verify their email with a one-time code. Users can request password resets by email and can optionally enable/disable email two-step sign-in from their profile. Email features return a configuration/delivery error until valid SMTP settings are present.

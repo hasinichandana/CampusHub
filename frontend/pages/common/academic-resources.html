@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CampusHub | Academic Resources</title>
   <link rel="stylesheet" href="../../css/global.css">
+  <script src="../../js/api.js"></script>
   <style>
     .resources-container {
       max-width: 1100px;
@@ -176,9 +177,10 @@
   </div>
 
   <script>
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('role') || 'student';
-    const userId = localStorage.getItem('userId');
+    const token = localStorage.getItem('campushub_token') || localStorage.getItem('token');
+    const userObj = JSON.parse(localStorage.getItem('campushub_user') || '{}');
+    const userRole = userObj.role || localStorage.getItem('role') || 'student';
+    const userId = userObj._id || userObj.id || localStorage.getItem('userId');
 
     if (userRole === 'faculty' || userRole === 'admin') {
       document.getElementById('upload-btn').style.display = 'inline-block';
@@ -276,7 +278,7 @@
     }
 
     async function downloadFile(id) {
-      window.open(`http://localhost:5000/api/academic-resources/${id}/download?token=${token}`, '_blank');
+      await downloadAuthenticatedFile(`/academic-resources/${id}/download`, 'academic_resource.pdf');
     }
 
     async function deleteRes(id) {

@@ -31,6 +31,8 @@ const campusIssueSchema = new mongoose.Schema(
           'Laboratory',
           'Electrical',
           'Internet/Wi-Fi',
+          'Infrastructure',
+          'Hostel',
           'Other'
         ],
         message: '{VALUE} is not a valid campus issue category'

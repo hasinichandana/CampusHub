@@ -1,7 +1,10 @@
+const path = require('path');
+const fs = require('fs');
 const DocumentRequest = require('../models/DocumentRequest');
 const User = require('../models/User');
 const { createNotification, notifyManyUsers } = require('../utils/notificationHelper');
 const { logActivity } = require('../utils/activityLogger');
+const { parsePagination } = require('../utils/queryFilters');
 
 const VALID_DOCUMENT_TRANSITIONS = {
   Pending: ['Under Review', 'Approved', 'Rejected'],
@@ -123,9 +126,10 @@ const getDocumentRequests = async (req, res, next) => {
       if (dateTo) query.createdAt.$lte = new Date(dateTo);
     }
 
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 10;
-    const skip = (pageNum - 1) * limitNum;
+    const pagination = parsePagination(page, limit);
+    if (!pagination) {
+      return res.status(400).json({ success: false, message: 'page must be positive and limit must be between 1 and 100' });
+    }
 
     const total = await DocumentRequest.countDocuments(query);
     const docs = await DocumentRequest.find(query)
@@ -133,17 +137,17 @@ const getDocumentRequests = async (req, res, next) => {
       .populate('departmentId', 'name code')
       .populate('reviewedBy', 'name email role')
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
+      .skip(pagination.skip)
+      .limit(pagination.limit);
 
     res.status(200).json({
       success: true,
       count: docs.length,
       pagination: {
-        page: pageNum,
-        limit: limitNum,
+        page: pagination.page,
+        limit: pagination.limit,
         total,
-        totalPages: Math.ceil(total / limitNum) || 1
+        totalPages: Math.ceil(total / pagination.limit) || 1
       },
       data: docs
     });
@@ -368,10 +372,96 @@ const uploadCompletedDocument = async (req, res, next) => {
   }
 };
 
+// @desc    Download document request file (Student owner, Dept Faculty, Admin)
+// @route   GET /api/documents/:id/download
+// @access  Private
+const downloadDocumentFile = async (req, res, next) => {
+  try {
+    const docRequest = await DocumentRequest.findById(req.params.id);
+
+    if (!docRequest) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document request not found'
+      });
+    }
+
+    // Role-based access control
+    if (req.user.role === 'student') {
+      if (docRequest.studentId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: "Forbidden: You cannot access another student's document"
+        });
+      }
+    } else if (req.user.role === 'faculty') {
+      const userDeptId = req.user.departmentId?._id || req.user.departmentId;
+      if (docRequest.departmentId.toString() !== userDeptId.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Forbidden: Faculty access restricted to own department requests'
+        });
+      }
+    }
+
+    const { type } = req.query; // 'supporting' or 'generated'
+    let targetRelativePath = '';
+
+    if (type === 'supporting') {
+      targetRelativePath = docRequest.supportingDocument;
+    } else if (type === 'generated') {
+      targetRelativePath = docRequest.generatedDocument;
+    } else {
+      // Default: generatedDocument if present, otherwise supportingDocument
+      targetRelativePath = docRequest.generatedDocument || docRequest.supportingDocument;
+    }
+
+    if (!targetRelativePath) {
+      return res.status(404).json({
+        success: false,
+        message: 'Requested document file is not available for this request'
+      });
+    }
+
+    const absoluteFilePath = path.resolve(__dirname, '..', targetRelativePath);
+    const uploadBase = path.resolve(__dirname, '../uploads');
+
+    // Prevent Path Traversal
+    if (!absoluteFilePath.startsWith(uploadBase)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Invalid file path'
+      });
+    }
+
+    if (!fs.existsSync(absoluteFilePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document file not found on server'
+      });
+    }
+
+    // Activity Log
+    await logActivity({
+      req,
+      action: 'DOWNLOAD',
+      module: 'DOCUMENT',
+      entityType: 'DocumentRequest',
+      entityId: docRequest._id,
+      description: `Downloaded document file (${path.basename(targetRelativePath)})`
+    });
+
+    res.download(absoluteFilePath, path.basename(targetRelativePath));
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createDocumentRequest,
   getDocumentRequests,
   getDocumentRequestById,
   updateDocumentStatus,
-  uploadCompletedDocument
+  uploadCompletedDocument,
+  downloadDocumentFile
 };

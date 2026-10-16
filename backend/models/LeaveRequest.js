@@ -23,7 +23,7 @@ const leaveRequestSchema = new mongoose.Schema(
     leaveType: {
       type: String,
       enum: {
-        values: ['Sick Leave', 'Casual Leave', 'Academic Leave', 'Duty Leave', 'Other'],
+        values: ['Sick Leave', 'Casual Leave', 'Academic Leave', 'Duty Leave', 'Medical Leave', 'Casual', 'Medical', 'Other'],
         message: '{VALUE} is not a valid leave type'
       },
       required: [true, 'Leave type is required']

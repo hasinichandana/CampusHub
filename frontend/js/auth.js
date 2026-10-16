@@ -8,19 +8,46 @@ const Auth = {
     });
 
     if (response.ok && response.data.success) {
-      const { user, token } = response.data.data;
-      localStorage.setItem('campushub_token', token);
-      localStorage.setItem('campushub_user', JSON.stringify(user));
+      if (response.data.requiresTwoFactor) {
+        return {
+          success: true,
+          requiresTwoFactor: true,
+          challengeId: response.data.data.challengeId,
+          email: response.data.data.email
+        };
+      }
 
-      // Redirect based on user role using dynamic base path
-      this.redirectToDashboard(user.role);
+      const { user, token } = response.data.data;
+      this.storeSession(user, token);
       return { success: true };
     } else {
       return {
         success: false,
-        message: response.data.message || 'Login failed'
+        message: response.data.message || 'Login failed',
+        needsEmailVerification: response.data.needsEmailVerification,
+        email: response.data.email
       };
     }
+  },
+
+  async verifyTwoFactor(challengeId, code) {
+    const response = await apiFetch('/auth/login/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ challengeId, code })
+    });
+    if (!response || !response.ok || !response.data.success) {
+      return { success: false, message: response?.data?.message || 'Code verification failed.' };
+    }
+
+    const { user, token } = response.data.data;
+    this.storeSession(user, token);
+    return { success: true };
+  },
+
+  storeSession(user, token) {
+    localStorage.setItem('campushub_token', token);
+    localStorage.setItem('campushub_user', JSON.stringify(user));
+    this.redirectToDashboard(user.role);
   },
 
   async logout() {

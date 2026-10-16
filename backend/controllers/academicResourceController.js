@@ -4,6 +4,24 @@ const AcademicResource = require('../models/AcademicResource');
 const User = require('../models/User');
 const Department = require('../models/Department');
 const { logActivity } = require('../utils/activityLogger');
+const { addTextSearch, parsePagination } = require('../utils/queryFilters');
+
+const getSafeResourceFilePath = (filePath) => {
+  if (typeof filePath !== 'string') return null;
+
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  if (!normalizedPath.startsWith('uploads/academic-resources/')) return null;
+
+  const resourceBase = path.resolve(__dirname, '../uploads/academic-resources');
+  const absolutePath = path.resolve(__dirname, '..', normalizedPath);
+  const relativePath = path.relative(resourceBase, absolutePath);
+
+  if (!relativePath || relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    return null;
+  }
+
+  return absolutePath;
+};
 
 // Helper to get relative file path
 const getRelativePath = (fullPath) => {
@@ -152,36 +170,32 @@ const getResources = async (req, res, next) => {
     if (academicYear) query.academicYear = academicYear;
     if (unit) query.unit = { $regex: unit, $options: 'i' };
 
-    const searchTerm = q || search;
-    if (searchTerm) {
-      const regex = { $regex: searchTerm, $options: 'i' };
-      query.$or = [
-        { title: regex },
-        { description: regex },
-        { subject: regex }
-      ];
+    const searchError = addTextSearch(query, q || search, ['title', 'description', 'subject']);
+    if (searchError) {
+      return res.status(400).json({ success: false, message: searchError });
     }
 
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 10;
-    const skip = (pageNum - 1) * limitNum;
+    const pagination = parsePagination(page, limit);
+    if (!pagination) {
+      return res.status(400).json({ success: false, message: 'page must be positive and limit must be between 1 and 100' });
+    }
 
     const total = await AcademicResource.countDocuments(query);
     const resources = await AcademicResource.find(query)
       .populate('uploadedBy', 'name email role')
       .populate('departmentId', 'name code')
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
+      .skip(pagination.skip)
+      .limit(pagination.limit);
 
     res.status(200).json({
       success: true,
       count: resources.length,
       pagination: {
-        page: pageNum,
-        limit: limitNum,
+        page: pagination.page,
+        limit: pagination.limit,
         total,
-        totalPages: Math.ceil(total / limitNum) || 1
+        totalPages: Math.ceil(total / pagination.limit) || 1
       },
       data: resources
     });
@@ -267,18 +281,15 @@ const downloadResource = async (req, res, next) => {
       }
     }
 
-    const absoluteFilePath = path.resolve(__dirname, '..', resource.filePath);
-
-    // Prevent Path Traversal
-    const uploadBase = path.resolve(__dirname, '../uploads');
-    if (!absoluteFilePath.startsWith(uploadBase)) {
+    const absoluteFilePath = getSafeResourceFilePath(resource.filePath);
+    if (!absoluteFilePath) {
       return res.status(403).json({
         success: false,
         message: 'Forbidden: Invalid file path'
       });
     }
 
-    if (!fs.existsSync(absoluteFilePath)) {
+    if (!fs.existsSync(absoluteFilePath) || !fs.statSync(absoluteFilePath).isFile()) {
       return res.status(404).json({
         success: false,
         message: 'File not found on server'
@@ -335,9 +346,9 @@ const updateResource = async (req, res, next) => {
 
     if (req.file) {
       // Delete old file if it exists
-      const oldPath = path.resolve(__dirname, '..', resource.filePath);
-      if (fs.existsSync(oldPath)) {
-        try { fs.unlinkSync(oldPath); } catch (e) {}
+      const oldPath = getSafeResourceFilePath(resource.filePath);
+      if (oldPath && fs.existsSync(oldPath)) {
+        fs.unlinkSync(oldPath);
       }
 
       updateFields.fileName = req.file.originalname;
@@ -402,9 +413,9 @@ const deleteResource = async (req, res, next) => {
     }
 
     // Physical File Cleanup
-    const fileAbsolutePath = path.resolve(__dirname, '..', resource.filePath);
-    if (fs.existsSync(fileAbsolutePath)) {
-      try { fs.unlinkSync(fileAbsolutePath); } catch (e) {}
+    const fileAbsolutePath = getSafeResourceFilePath(resource.filePath);
+    if (fileAbsolutePath && fs.existsSync(fileAbsolutePath)) {
+      fs.unlinkSync(fileAbsolutePath);
     }
 
     await AcademicResource.findByIdAndDelete(req.params.id);

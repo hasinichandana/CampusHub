@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const user = Auth.getUser();
   renderFacultyDashboard(user);
+  loadFacultyMetrics();
   loadFacultyLeaves();
   loadFacultyAssignedIssues();
 
@@ -16,6 +17,39 @@ document.addEventListener('DOMContentLoaded', () => {
     statusFilter.addEventListener('change', () => loadFacultyLeaves());
   }
 });
+
+async function loadFacultyMetrics() {
+  const result = await apiFetch('/analytics/faculty/overview');
+  const data = result?.data?.data;
+  const issueStatuses = data?.issues || {};
+  const complaintStatuses = data?.complaints || {};
+  const openIssueCount = Object.entries(issueStatuses)
+    .filter(([status]) => !['Resolved', 'Closed'].includes(status))
+    .reduce((total, [, count]) => total + count, 0);
+  const reviewComplaintCount = Object.entries(complaintStatuses)
+    .filter(([status]) => !['Resolved', 'Closed'].includes(status))
+    .reduce((total, [, count]) => total + count, 0);
+  const metrics = {
+    'metric-pending-dept-leaves': data?.leaves?.Pending,
+    'metric-dept-students': data?.studentCount,
+    'metric-assigned-issues': openIssueCount,
+    'metric-review-complaints': reviewComplaintCount,
+    'metric-dept-events': data?.eventCount
+  };
+
+  Object.entries(metrics).forEach(([id, value]) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.textContent = result?.ok && result.data.success && Number.isFinite(value)
+        ? value
+        : 'Unavailable';
+    }
+  });
+
+  if (!result?.ok || !result.data.success) {
+    console.error('Could not load faculty analytics:', result?.data?.message || 'Unknown API error');
+  }
+}
 
 function renderFacultyDashboard(user) {
   const facultyNameEl = document.getElementById('faculty-name');
@@ -30,7 +64,6 @@ function renderFacultyDashboard(user) {
 // --- LEAVE MANAGEMENT ---
 async function loadFacultyLeaves() {
   const tableBody = document.getElementById('faculty-leaves-table-body');
-  const pendingCountEl = document.getElementById('metric-pending-dept-leaves');
   const statusFilter = document.getElementById('faculty-status-filter');
 
   if (!tableBody) return;
@@ -44,9 +77,6 @@ async function loadFacultyLeaves() {
   if (result.ok && result.data.success) {
     const leaves = result.data.data;
     
-    const pendingCount = leaves.filter(l => l.status === 'Pending').length;
-    if (pendingCountEl) pendingCountEl.textContent = pendingCount;
-
     if (leaves.length === 0) {
       tableBody.innerHTML = `
         <tr>
@@ -67,7 +97,7 @@ async function loadFacultyLeaves() {
       const statusBadge = getStatusBadge(leave.status);
       
       const fileLink = leave.supportingDocument
-        ? `<a href="http://localhost:5000/${leave.supportingDocument}" target="_blank" style="color: #818cf8; text-decoration: underline;">📄 View File</a>`
+        ? `<button type="button" class="btn" style="padding: 2px 8px; font-size: 0.75rem; background: rgba(99, 102, 241, 0.2); color: #818cf8; border: none; cursor: pointer; text-decoration: underline;" onclick="viewAuthenticatedFile('/leaves/${leave._id}/download')">📄 View File</button>`
         : '<span style="color: #64748b;">None</span>';
 
       html += `
@@ -104,7 +134,7 @@ function openReviewModal(leaveId, studentName, leaveType, fromDate, toDate, enco
 
   const docContainer = document.getElementById('review-doc-container');
   if (docPath) {
-    docContainer.innerHTML = `<a href="http://localhost:5000/${docPath}" target="_blank" style="color: #818cf8; font-weight: 600; text-decoration: underline;">📄 Download/View Attachment</a>`;
+    docContainer.innerHTML = `<button type="button" class="btn" style="padding: 4px 12px; font-size: 0.8rem; background: rgba(99, 102, 241, 0.2); color: #818cf8; border: none; cursor: pointer; text-decoration: underline;" onclick="viewAuthenticatedFile('/leaves/${leaveId}/download')">📄 View Attachment</button>`;
   } else {
     docContainer.innerHTML = '<span style="color: #64748b;">No document attached</span>';
   }
@@ -133,6 +163,7 @@ async function processLeave(status) {
   if (result.ok && result.data.success) {
     closeReviewModal();
     loadFacultyLeaves();
+    loadFacultyMetrics();
   } else {
     alertBox.textContent = result.data.message || 'Failed to update leave request status.';
     alertBox.className = 'alert-box alert-danger';
@@ -143,7 +174,6 @@ async function processLeave(status) {
 // --- CAMPUS ISSUES MANAGEMENT ---
 async function loadFacultyAssignedIssues() {
   const tableBody = document.getElementById('faculty-issues-table-body');
-  const assignedCountEl = document.getElementById('metric-assigned-issues');
 
   if (!tableBody) return;
 
@@ -151,8 +181,6 @@ async function loadFacultyAssignedIssues() {
   if (result.ok && result.data.success) {
     const issues = result.data.data;
     
-    if (assignedCountEl) assignedCountEl.textContent = issues.length;
-
     if (issues.length === 0) {
       tableBody.innerHTML = `
         <tr>
@@ -247,6 +275,7 @@ async function submitIssueProcess() {
   if (result.ok && result.data.success) {
     closeProcessIssueModal();
     loadFacultyAssignedIssues();
+    loadFacultyMetrics();
   } else {
     alertBox.textContent = result.data.message || 'Failed to update issue status.';
     alertBox.className = 'alert-box alert-danger';

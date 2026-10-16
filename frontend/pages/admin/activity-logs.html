@@ -113,7 +113,9 @@
   </div>
 
   <script>
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('campushub_token') || localStorage.getItem('token');
+    const userObj = JSON.parse(localStorage.getItem('campushub_user') || '{}');
+    const userRole = userObj.role || localStorage.getItem('role') || 'admin';
 
     async function fetchLogs() {
       if (!token) {

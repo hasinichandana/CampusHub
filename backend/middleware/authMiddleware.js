@@ -20,16 +20,25 @@ const protect = async (req, res, next) => {
       );
 
       // Get user from database excluding password field
-      req.user = await User.findById(decoded.id)
+      const authenticatedUser = await User.findById(decoded.id)
         .select('-password')
         .populate('departmentId', 'name code');
 
-      if (!req.user) {
+      if (!authenticatedUser) {
         return res.status(401).json({
           success: false,
           message: 'Not authorized, user account no longer exists'
         });
       }
+
+      if ((decoded.tokenVersion || 0) !== authenticatedUser.authTokenVersion) {
+        return res.status(401).json({
+          success: false,
+          message: 'Not authorized, session has been revoked'
+        });
+      }
+
+      req.user = authenticatedUser;
 
       // Check account status
       if (req.user.status === 'inactive') {

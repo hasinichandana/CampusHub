@@ -1,8 +1,11 @@
+const path = require('path');
+const fs = require('fs');
 const CampusIssue = require('../models/CampusIssue');
 const User = require('../models/User');
 const Department = require('../models/Department');
 const { createNotification, notifyManyUsers } = require('../utils/notificationHelper');
 const { logActivity } = require('../utils/activityLogger');
+const { addTextSearch, parsePagination } = require('../utils/queryFilters');
 
 // Allowed status transitions mapping
 const VALID_STATUS_TRANSITIONS = {
@@ -114,17 +117,15 @@ const getIssues = async (req, res, next) => {
     if (status) query.status = status;
     if (category) query.category = category;
 
-    const searchTerm = q || search;
-    if (searchTerm) {
-      query.$or = [
-        { title: { $regex: searchTerm, $options: 'i' } },
-        { description: { $regex: searchTerm, $options: 'i' } }
-      ];
+    const searchError = addTextSearch(query, q || search, ['title', 'description']);
+    if (searchError) {
+      return res.status(400).json({ success: false, message: searchError });
     }
 
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 10;
-    const skip = (pageNum - 1) * limitNum;
+    const pagination = parsePagination(page, limit);
+    if (!pagination) {
+      return res.status(400).json({ success: false, message: 'page must be positive and limit must be between 1 and 100' });
+    }
 
     const total = await CampusIssue.countDocuments(query);
     const issues = await CampusIssue.find(query)
@@ -133,17 +134,17 @@ const getIssues = async (req, res, next) => {
       .populate('assignedTo', 'name email role phone')
       .populate('closedBy', 'name email role')
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
+      .skip(pagination.skip)
+      .limit(pagination.limit);
 
     res.status(200).json({
       success: true,
       count: issues.length,
       pagination: {
-        page: pageNum,
-        limit: limitNum,
+        page: pagination.page,
+        limit: pagination.limit,
         total,
-        totalPages: Math.ceil(total / limitNum) || 1
+        totalPages: Math.ceil(total / pagination.limit) || 1
       },
       data: issues
     });
@@ -370,10 +371,56 @@ const updateIssueStatus = async (req, res, next) => {
   }
 };
 
+// @desc    Get/Download issue image
+// @route   GET /api/issues/:id/image
+// @access  Private
+const getIssueImage = async (req, res, next) => {
+  try {
+    const issue = await CampusIssue.findById(req.params.id);
+
+    if (!issue) {
+      return res.status(404).json({
+        success: false,
+        message: 'Campus issue not found'
+      });
+    }
+
+    if (!issue.image) {
+      return res.status(404).json({
+        success: false,
+        message: 'No image attached to this campus issue'
+      });
+    }
+
+    const absoluteFilePath = path.resolve(__dirname, '..', issue.image);
+    const uploadBase = path.resolve(__dirname, '../uploads');
+
+    // Prevent Path Traversal
+    if (!absoluteFilePath.startsWith(uploadBase)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Invalid file path'
+      });
+    }
+
+    if (!fs.existsSync(absoluteFilePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Issue image file not found on server'
+      });
+    }
+
+    res.sendFile(absoluteFilePath);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createIssue,
   getIssues,
   getIssueById,
   assignIssue,
-  updateIssueStatus
+  updateIssueStatus,
+  getIssueImage
 };

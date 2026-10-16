@@ -1,4 +1,5 @@
 const Notification = require('../models/Notification');
+const { parsePagination } = require('../utils/queryFilters');
 
 // @desc    Get current user's notifications
 // @route   GET /api/notifications
@@ -16,27 +17,28 @@ const getNotifications = async (req, res, next) => {
       query.type = type;
     }
 
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 10;
-    const skip = (pageNum - 1) * limitNum;
+    const pagination = parsePagination(page, limit);
+    if (!pagination) {
+      return res.status(400).json({ success: false, message: 'page must be positive and limit must be between 1 and 100' });
+    }
 
     const total = await Notification.countDocuments(query);
     const unreadCount = await Notification.countDocuments({ recipientId: req.user._id, isRead: false });
 
     const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
+      .skip(pagination.skip)
+      .limit(pagination.limit);
 
     res.status(200).json({
       success: true,
       count: notifications.length,
       unreadCount,
       pagination: {
-        page: pageNum,
-        limit: limitNum,
+        page: pagination.page,
+        limit: pagination.limit,
         total,
-        totalPages: Math.ceil(total / limitNum) || 1
+        totalPages: Math.ceil(total / pagination.limit) || 1
       },
       data: notifications
     });

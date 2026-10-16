@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "seed": "node utils/seed.js"
+    "seed": "node utils/seed.js",
+    "repair:academic-resources": "node utils/repairAcademicResources.js",
+    "test": "node --test",
+    "test:leave-files": "node --test test/leaveFile.test.js"
   },
   "keywords": [
     "campushub",
@@ -23,7 +26,8 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.3.1",
-    "multer": "^2.4.0"
+    "multer": "^2.4.0",
+    "nodemailer": "^10.1.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"

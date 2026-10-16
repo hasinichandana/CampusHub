@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
       match: [
-        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+        /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
         'Please enter a valid email address'
       ]
     },
@@ -55,6 +55,18 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ['active', 'inactive'],
       default: 'active'
+    },
+    emailVerified: {
+      type: Boolean,
+      default: true
+    },
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false
+    },
+    authTokenVersion: {
+      type: Number,
+      default: 0
     }
   },
   {

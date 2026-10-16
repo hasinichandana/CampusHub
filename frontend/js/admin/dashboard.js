@@ -32,17 +32,27 @@ function renderAdminDashboard(user) {
 }
 
 async function fetchSystemMetrics() {
-  const result = await apiFetch('/health');
-  if (result.ok && result.data.success) {
-    const deptCountEl = document.getElementById('metric-dept-count');
-    const userCountEl = document.getElementById('metric-user-count');
-    const pendingCountEl = document.getElementById('metric-pending-leaves');
-    const openIssuesCountEl = document.getElementById('metric-open-issues');
+  const result = await apiFetch('/analytics/admin/overview');
+  const metrics = {
+    'metric-dept-count': result?.data?.data?.departments?.total,
+    'metric-user-count': result?.data?.data?.users?.total,
+    'metric-pending-leaves': result?.data?.data?.leaves?.pending,
+    'metric-open-issues': result?.data?.data?.issues?.open,
+    'metric-open-complaints': result?.data?.data?.complaints?.open,
+    'metric-pending-documents': result?.data?.data?.documents?.pending
+  };
 
-    if (deptCountEl) deptCountEl.textContent = result.data.data.departmentsCount || 5;
-    if (userCountEl) userCountEl.textContent = result.data.data.usersCount || 5;
-    if (pendingCountEl) pendingCountEl.textContent = result.data.data.pendingLeavesCount || 0;
-    if (openIssuesCountEl) openIssuesCountEl.textContent = result.data.data.openIssuesCount || 0;
+  Object.entries(metrics).forEach(([id, value]) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.textContent = result?.ok && result.data.success && Number.isFinite(value)
+        ? value
+        : 'Unavailable';
+    }
+  });
+
+  if (!result?.ok || !result.data.success) {
+    console.error('Could not load admin analytics:', result?.data?.message || 'Unknown API error');
   }
 }
 
@@ -84,7 +94,6 @@ async function loadAdminLeaves() {
   const tableBody = document.getElementById('admin-leaves-table-body');
   const statusFilter = document.getElementById('admin-status-filter');
   const deptFilter = document.getElementById('admin-dept-filter');
-  const pendingCountEl = document.getElementById('metric-pending-leaves');
 
   if (!tableBody) return;
 
@@ -99,9 +108,6 @@ async function loadAdminLeaves() {
   if (result.ok && result.data.success) {
     const leaves = result.data.data;
     
-    const pendingCount = leaves.filter(l => l.status === 'Pending').length;
-    if (pendingCountEl) pendingCountEl.textContent = pendingCount;
-
     if (leaves.length === 0) {
       tableBody.innerHTML = `
         <tr>
@@ -122,7 +128,7 @@ async function loadAdminLeaves() {
       const statusBadge = getStatusBadge(leave.status);
       
       const fileLink = leave.supportingDocument
-        ? `<a href="http://localhost:5000/${leave.supportingDocument}" target="_blank" style="color: #818cf8; text-decoration: underline;">📄 View File</a>`
+        ? `<button type="button" class="btn" style="padding: 2px 8px; font-size: 0.75rem; background: rgba(99, 102, 241, 0.2); color: #818cf8; border: none; cursor: pointer; text-decoration: underline;" onclick="viewAuthenticatedFile('/leaves/${leave._id}/download')">📄 View File</button>`
         : '<span style="color: #64748b;">None</span>';
 
       html += `
@@ -160,7 +166,7 @@ function openAdminReviewModal(leaveId, studentName, deptCode, leaveType, fromDat
 
   const docContainer = document.getElementById('admin-review-doc-container');
   if (docPath) {
-    docContainer.innerHTML = `<a href="http://localhost:5000/${docPath}" target="_blank" style="color: #818cf8; font-weight: 600; text-decoration: underline;">📄 Download/View Attachment</a>`;
+    docContainer.innerHTML = `<button type="button" class="btn" style="padding: 4px 12px; font-size: 0.8rem; background: rgba(99, 102, 241, 0.2); color: #818cf8; border: none; cursor: pointer; text-decoration: underline;" onclick="viewAuthenticatedFile('/leaves/${leaveId}/download')">📄 View Attachment</button>`;
   } else {
     docContainer.innerHTML = '<span style="color: #64748b;">No document attached</span>';
   }
@@ -202,7 +208,6 @@ async function loadAdminIssues() {
   const tableBody = document.getElementById('admin-issues-table-body');
   const statusFilter = document.getElementById('admin-issue-status-filter');
   const categoryFilter = document.getElementById('admin-issue-category-filter');
-  const openCountEl = document.getElementById('metric-open-issues');
 
   if (!tableBody) return;
 
@@ -217,9 +222,6 @@ async function loadAdminIssues() {
   if (result.ok && result.data.success) {
     const issues = result.data.data;
     
-    const openCount = issues.filter(i => i.status !== 'Closed').length;
-    if (openCountEl) openCountEl.textContent = openCount;
-
     if (issues.length === 0) {
       tableBody.innerHTML = `
         <tr>

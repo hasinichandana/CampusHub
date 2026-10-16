@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CampusHub | Verify Email</title>
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-header">
+        <h2>Verify your email</h2>
+        <p>Enter the six-digit code sent to your email address.</p>
+      </div>
+      <div id="verify-alert" class="alert-box alert-danger"></div>
+      <form id="verify-form">
+        <div class="form-group">
+          <label class="form-label" for="email">Email address</label>
+          <input class="form-input" id="email" type="email" autocomplete="email" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="code">Verification code</label>
+          <input class="form-input" id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+        </div>
+        <button class="btn" id="verify-btn" type="submit">Verify email</button>
+      </form>
+      <button class="btn" id="resend-btn" type="button" style="margin-top:12px; background:rgba(99,102,241,0.18);">Send a new code</button>
+      <p style="margin-top:18px; text-align:center;"><a href="login.html" style="color:#a5b4fc;">Back to sign in</a></p>
+    </div>
+  </div>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    let challengeId = params.get('challengeId') || '';
+    const emailInput = document.getElementById('email');
+    const alertBox = document.getElementById('verify-alert');
+    emailInput.value = params.get('email') || '';
+
+    document.getElementById('verify-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = document.getElementById('verify-btn');
+      button.disabled = true;
+      const response = await apiFetch('/auth/verify-email', {
+        method: 'POST',
+        body: JSON.stringify({ challengeId, code: document.getElementById('code').value.trim() })
+      });
+      if (response?.ok && response.data.success) {
+        const { user, token } = response.data.data;
+        Auth.storeSession(user, token);
+        return;
+      }
+      showVerifyAlert(response?.data?.message || 'Email verification failed.', false);
+      button.disabled = false;
+    });
+
+    document.getElementById('resend-btn').addEventListener('click', async () => {
+      const response = await apiFetch('/auth/resend-verification', {
+        method: 'POST',
+        body: JSON.stringify({ email: emailInput.value.trim() })
+      });
+      if (response?.ok) {
+        challengeId = response.data.data.challengeId;
+        showVerifyAlert(response.data.message, true);
+      } else {
+        showVerifyAlert(response?.data?.message || 'Could not send a new code.', false);
+      }
+    });
+
+    function showVerifyAlert(message, success) {
+      alertBox.textContent = message;
+      alertBox.className = `alert-box ${success ? 'alert-success' : 'alert-danger'}`;
+      alertBox.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

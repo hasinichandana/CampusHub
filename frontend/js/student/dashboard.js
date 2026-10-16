@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const user = Auth.getUser();
   renderStudentDashboard(user);
+  loadStudentMetrics();
   loadStudentLeaves();
   loadStudentIssues();
 
@@ -21,6 +22,31 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+async function loadStudentMetrics() {
+  const result = await apiFetch('/analytics/student/overview');
+  const data = result?.data?.data;
+  const metrics = {
+    'metric-pending-leaves': data?.pendingLeavesCount,
+    'metric-open-issues': data?.openIssuesCount,
+    'metric-student-complaints': data?.complaintsCount,
+    'metric-student-documents': data?.documentsCount,
+    'metric-student-events': data?.eventRegistrationsCount
+  };
+
+  Object.entries(metrics).forEach(([id, value]) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.textContent = result?.ok && result.data.success && Number.isFinite(value)
+        ? value
+        : 'Unavailable';
+    }
+  });
+
+  if (!result?.ok || !result.data.success) {
+    console.error('Could not load student analytics:', result?.data?.message || 'Unknown API error');
+  }
+}
+
 function renderStudentDashboard(user) {
   const studentNameEl = document.getElementById('student-name');
   const deptNameEl = document.getElementById('student-dept');
@@ -34,7 +60,6 @@ function renderStudentDashboard(user) {
 // --- LEAVE MANAGEMENT ---
 async function loadStudentLeaves() {
   const tableBody = document.getElementById('student-leaves-table-body');
-  const pendingCountEl = document.getElementById('metric-pending-leaves');
 
   if (!tableBody) return;
 
@@ -42,9 +67,6 @@ async function loadStudentLeaves() {
   if (result.ok && result.data.success) {
     const leaves = result.data.data;
     
-    const pendingCount = leaves.filter(l => l.status === 'Pending').length;
-    if (pendingCountEl) pendingCountEl.textContent = pendingCount;
-
     if (leaves.length === 0) {
       tableBody.innerHTML = `
         <tr>
@@ -63,7 +85,7 @@ async function loadStudentLeaves() {
       const statusBadge = getStatusBadge(leave.status);
       
       const fileLink = leave.supportingDocument
-        ? `<a href="http://localhost:5000/${leave.supportingDocument}" target="_blank" style="color: #818cf8; text-decoration: underline;">📄 View File</a>`
+        ? `<button type="button" class="btn" style="padding: 2px 8px; font-size: 0.75rem; background: rgba(99, 102, 241, 0.2); color: #818cf8; border: none; cursor: pointer; text-decoration: underline;" onclick="viewAuthenticatedFile('/leaves/${leave._id}/download')">📄 View File</button>`
         : '<span style="color: #64748b;">None</span>';
 
       const cancelBtn = leave.status === 'Pending'
@@ -169,7 +191,6 @@ async function cancelLeave(leaveId) {
 // --- CAMPUS ISSUES MANAGEMENT ---
 async function loadStudentIssues() {
   const tableBody = document.getElementById('student-issues-table-body');
-  const openCountEl = document.getElementById('metric-open-issues');
 
   if (!tableBody) return;
 
@@ -177,9 +198,6 @@ async function loadStudentIssues() {
   if (result.ok && result.data.success) {
     const issues = result.data.data;
     
-    const openCount = issues.filter(i => i.status !== 'Closed').length;
-    if (openCountEl) openCountEl.textContent = openCount;
-
     if (issues.length === 0) {
       tableBody.innerHTML = `
         <tr>

@@ -112,8 +112,9 @@
   </div>
 
   <script>
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('role') || 'student';
+    const token = localStorage.getItem('campushub_token') || localStorage.getItem('token');
+    const userObj = JSON.parse(localStorage.getItem('campushub_user') || '{}');
+    const userRole = userObj.role || localStorage.getItem('role') || 'student';
 
     document.getElementById('back-btn').addEventListener('click', () => {
       window.location.href = `../${userRole}/dashboard.html`;

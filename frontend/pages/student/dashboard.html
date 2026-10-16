@@ -79,7 +79,7 @@
         <div class="metric-card">
           <div class="metric-data">
             <h4>Active Complaints</h4>
-            <div class="metric-number">0</div>
+            <div id="metric-student-complaints" class="metric-number">0</div>
           </div>
           <div class="metric-icon">💬</div>
         </div>
@@ -87,15 +87,15 @@
         <div class="metric-card">
           <div class="metric-data">
             <h4>Document Requests</h4>
-            <div class="metric-number">0</div>
+            <div id="metric-student-documents" class="metric-number">0</div>
           </div>
           <div class="metric-icon">📜</div>
         </div>
 
         <div class="metric-card">
           <div class="metric-data">
-            <h4>Upcoming Events</h4>
-            <div class="metric-number">0</div>
+            <h4>Event Registrations</h4>
+            <div id="metric-student-events" class="metric-number">0</div>
           </div>
           <div class="metric-icon">📅</div>
         </div>
@@ -209,7 +209,7 @@
         <div class="form-group">
           <label class="form-label" for="supportingDocument">Supporting Document (Optional)</label>
           <input type="file" id="supportingDocument" class="form-input" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
-          <span style="font-size: 0.75rem; color: #64748b;">Allowed formats: PDF, DOC, PNG, JPG (Max 5MB)</span>
+          <span style="font-size: 0.75rem; color: #64748b;">Allowed formats: PDF, DOC, DOCX, PNG, JPG, JPEG (Max 5MB). The file contents are checked before saving.</span>
         </div>
 
         <button type="submit" id="submit-leave-btn" class="btn">

@@ -40,6 +40,24 @@
         </button>
       </form>
 
+      <div id="two-factor-panel" style="display:none;">
+        <p style="color:#cbd5e1; margin: 12px 0;">Enter the six-digit code sent to your email.</p>
+        <form id="two-factor-form">
+          <div class="form-group">
+            <label class="form-label" for="login-otp">Email verification code</label>
+            <input type="text" id="login-otp" class="form-input" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+          </div>
+          <button type="submit" id="verify-otp-btn" class="btn">Verify and Sign In</button>
+        </form>
+        <button type="button" class="btn" style="margin-top:10px; background:transparent;" onclick="showPasswordLogin()">Use another account</button>
+      </div>
+
+      <button id="resend-verification-btn" type="button" class="btn" style="display:none; margin-top:10px; background:rgba(99,102,241,0.18);" onclick="resendEmailVerification()">Send a new verification code</button>
+      <div style="display:flex; justify-content:space-between; gap:12px; margin-top:18px; font-size:0.85rem;">
+        <a href="forgot-password.html" style="color:#a5b4fc;">Forgot password?</a>
+        <a href="register.html" style="color:#a5b4fc;">Create student account</a>
+      </div>
+
       <div class="demo-credentials-box">
         <div class="demo-title">
           <span>1-Click Demo Login</span>
@@ -57,6 +75,9 @@
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script>
+    let pendingOtpChallengeId = null;
+    let pendingVerificationEmail = null;
+
     document.addEventListener('DOMContentLoaded', () => {
       // If already authenticated, redirect to role dashboard
       const user = Auth.getUser();
@@ -78,14 +99,65 @@
         submitBtn.textContent = 'Authenticating...';
 
         const result = await Auth.login(email, password);
-        if (!result.success) {
+        if (result.requiresTwoFactor) {
+          pendingOtpChallengeId = result.challengeId;
+          document.getElementById('two-factor-panel').style.display = 'block';
+          form.style.display = 'none';
+          document.querySelector('.demo-credentials-box').style.display = 'none';
+          alertBox.textContent = `A verification code was sent to ${result.email}.`;
+          alertBox.className = 'alert-box alert-success';
+          alertBox.style.display = 'block';
+        } else if (!result.success) {
           alertBox.textContent = result.message;
           alertBox.style.display = 'block';
+          if (result.needsEmailVerification) {
+            pendingVerificationEmail = result.email || email;
+            document.getElementById('resend-verification-btn').style.display = 'block';
+          }
           submitBtn.disabled = false;
           submitBtn.textContent = 'Sign In to Portal';
         }
       });
+
+      document.getElementById('two-factor-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const button = document.getElementById('verify-otp-btn');
+        const alertBox = document.getElementById('alert-message');
+        button.disabled = true;
+        const result = await Auth.verifyTwoFactor(pendingOtpChallengeId, document.getElementById('login-otp').value.trim());
+        if (!result.success) {
+          alertBox.textContent = result.message;
+          alertBox.className = 'alert-box alert-danger';
+          alertBox.style.display = 'block';
+          button.disabled = false;
+        }
+      });
     });
+
+    function showPasswordLogin() {
+      document.getElementById('two-factor-panel').style.display = 'none';
+      document.getElementById('login-form').style.display = 'block';
+      document.querySelector('.demo-credentials-box').style.display = 'block';
+      document.getElementById('alert-message').style.display = 'none';
+      document.getElementById('login-otp').value = '';
+      pendingOtpChallengeId = null;
+    }
+
+    async function resendEmailVerification() {
+      const alertBox = document.getElementById('alert-message');
+      const response = await apiFetch('/auth/resend-verification', {
+        method: 'POST',
+        body: JSON.stringify({ email: pendingVerificationEmail })
+      });
+      if (response?.ok) {
+        const challengeId = response.data.data?.challengeId;
+        window.location.href = `verify-email.html?email=${encodeURIComponent(pendingVerificationEmail)}&challengeId=${encodeURIComponent(challengeId || '')}`;
+      } else {
+        alertBox.textContent = response?.data?.message || 'Could not send a verification code. Please try again.';
+        alertBox.className = 'alert-box alert-danger';
+        alertBox.style.display = 'block';
+      }
+    }
 
     function quickFill(email, password) {
       document.getElementById('email').value = email;

@@ -60,7 +60,7 @@
   </div>
 
   <script>
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('campushub_token') || localStorage.getItem('token');
 
     async function loadFacultyAnalytics() {
       if (!token) {

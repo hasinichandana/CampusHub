@@ -2,6 +2,7 @@ const Announcement = require('../models/Announcement');
 const User = require('../models/User');
 const { createNotification, notifyManyUsers } = require('../utils/notificationHelper');
 const { logActivity } = require('../utils/activityLogger');
+const { addTextSearch, parsePagination } = require('../utils/queryFilters');
 
 const VALID_ANNOUNCEMENT_TRANSITIONS = {
   Draft: ['Published', 'Archived'],
@@ -154,15 +155,40 @@ const getAnnouncements = async (req, res, next) => {
         }
       ];
     } else if (req.user.role === 'faculty') {
-      if (status) {
+      const facultyDepartmentId = req.user.departmentId?._id || req.user.departmentId;
+      const publishedForFaculty = {
+        status: 'Published',
+        publishAt: { $lte: now },
+        $and: [
+          {
+            $or: [
+              { expiresAt: { $exists: false } },
+              { expiresAt: null },
+              { expiresAt: { $gt: now } }
+            ]
+          },
+          {
+            $or: [
+              { audience: 'College' },
+              ...(facultyDepartmentId
+                ? [{ audience: 'Department', departmentId: facultyDepartmentId }]
+                : [])
+            ]
+          }
+        ]
+      };
+
+      if (status && status !== 'Published') {
         query.status = status;
-        if (status !== 'Published') {
-          query.createdBy = req.user._id;
-        }
+        query.createdBy = req.user._id;
+      } else if (status === 'Published') {
+        query.status = 'Published';
+        query.publishAt = { $lte: now };
+        query.$and = publishedForFaculty.$and;
       } else {
         query.$or = [
-          { status: 'Published' },
-          { createdBy: req.user._id }
+          { createdBy: req.user._id },
+          publishedForFaculty
         ];
       }
     } else if (req.user.role === 'admin') {
@@ -173,45 +199,40 @@ const getAnnouncements = async (req, res, next) => {
 
     if (type) query.type = type;
 
-    const searchTerm = q || search;
-    if (searchTerm) {
-      const searchFilter = [
-        { title: { $regex: searchTerm, $options: 'i' } },
-        { content: { $regex: searchTerm, $options: 'i' } }
-      ];
-      if (query.$and) {
-        query.$and.push({ $or: searchFilter });
-      } else {
-        query.$or = searchFilter;
-      }
+    const searchError = addTextSearch(query, q || search, ['title', 'content']);
+    if (searchError) {
+      return res.status(400).json({ success: false, message: searchError });
     }
 
     if (dateFrom || dateTo) {
-      query.publishAt = query.publishAt || {};
-      if (dateFrom) query.publishAt.$gte = new Date(dateFrom);
-      if (dateTo) query.publishAt.$lte = new Date(dateTo);
+      const publishAtRange = {};
+      if (dateFrom) publishAtRange.$gte = new Date(dateFrom);
+      if (dateTo) publishAtRange.$lte = new Date(dateTo);
+      query.$and = query.$and || [];
+      query.$and.push({ publishAt: publishAtRange });
     }
 
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 10;
-    const skip = (pageNum - 1) * limitNum;
+    const pagination = parsePagination(page, limit);
+    if (!pagination) {
+      return res.status(400).json({ success: false, message: 'page must be positive and limit must be between 1 and 100' });
+    }
 
     const total = await Announcement.countDocuments(query);
     const announcements = await Announcement.find(query)
       .populate('createdBy', 'name email role')
       .populate('departmentId', 'name code')
       .sort({ publishAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
+      .skip(pagination.skip)
+      .limit(pagination.limit);
 
     res.status(200).json({
       success: true,
       count: announcements.length,
       pagination: {
-        page: pageNum,
-        limit: limitNum,
+        page: pagination.page,
+        limit: pagination.limit,
         total,
-        totalPages: Math.ceil(total / limitNum) || 1
+        totalPages: Math.ceil(total / pagination.limit) || 1
       },
       data: announcements
     });
@@ -261,6 +282,23 @@ const getAnnouncementById = async (req, res, next) => {
           message: 'Forbidden: You cannot access announcements for another department'
         });
       }
+    } else if (req.user.role === 'faculty') {
+      const isOwner = announcement.createdBy._id.toString() === req.user._id.toString();
+      const facultyDepartmentId = req.user.departmentId?._id || req.user.departmentId;
+      const isPublishedForFaculty = announcement.status === 'Published' &&
+        new Date(announcement.publishAt) <= now &&
+        (!announcement.expiresAt || new Date(announcement.expiresAt) > now) &&
+        (announcement.audience === 'College' ||
+          (announcement.audience === 'Department' &&
+            facultyDepartmentId &&
+            announcement.departmentId?._id.toString() === facultyDepartmentId.toString()));
+
+      if (!isOwner && !isPublishedForFaculty) {
+        return res.status(403).json({
+          success: false,
+          message: 'Forbidden: Faculty can only view their own drafts and relevant published announcements'
+        });
+      }
     }
 
     res.status(200).json({
@@ -300,12 +338,70 @@ const updateAnnouncement = async (req, res, next) => {
       });
     }
 
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Announcement updates must be a JSON object'
+      });
+    }
+
+    const allowedFields = ['title', 'content', 'type', 'publishAt', 'expiresAt'];
+    if (req.user.role === 'admin') {
+      allowedFields.push('departmentId', 'audience');
+    }
+
+    const unsupportedFields = Object.keys(req.body).filter(field => !allowedFields.includes(field));
+    if (unsupportedFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Unsupported announcement fields: ${unsupportedFields.join(', ')}`
+      });
+    }
+
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Provide at least one announcement field to update'
+      });
+    }
+
+    const nextPublishAt = req.body.publishAt || announcement.publishAt;
+    const nextExpiresAt = req.body.expiresAt || announcement.expiresAt;
+    if (
+      Number.isNaN(new Date(nextPublishAt).getTime()) ||
+      (nextExpiresAt && Number.isNaN(new Date(nextExpiresAt).getTime())) ||
+      (nextExpiresAt && new Date(nextPublishAt) > new Date(nextExpiresAt))
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Announcement publication and expiration dates must be valid, and publication cannot be after expiration'
+      });
+    }
+
+    const nextAudience = req.body.audience || announcement.audience;
+    const nextDepartmentId = req.body.departmentId || announcement.departmentId;
+    if (nextAudience === 'Department' && !nextDepartmentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Department announcements must target a department'
+      });
+    }
+
     const updatedAnnouncement = await Announcement.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true
     })
       .populate('createdBy', 'name email role')
       .populate('departmentId', 'name code');
+
+    await logActivity({
+      req,
+      action: 'UPDATE',
+      module: 'ANNOUNCEMENT',
+      entityType: 'Announcement',
+      entityId: announcement._id,
+      description: `Updated announcement: "${updatedAnnouncement.title}"`
+    });
 
     res.status(200).json({
       success: true,

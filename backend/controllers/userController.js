@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const { parsePagination } = require('../utils/queryFilters');
 
 // @desc    Get user directory (Admin: all, Faculty: own dept only, Student: forbidden)
 // @route   GET /api/users
@@ -36,26 +37,27 @@ const getUsers = async (req, res, next) => {
       ];
     }
 
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 10;
-    const skip = (pageNum - 1) * limitNum;
+    const pagination = parsePagination(page, limit);
+    if (!pagination) {
+      return res.status(400).json({ success: false, message: 'page must be positive and limit must be between 1 and 100' });
+    }
 
     const total = await User.countDocuments(query);
     const users = await User.find(query)
       .select('-password')
       .populate('departmentId', 'name code')
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
+      .skip(pagination.skip)
+      .limit(pagination.limit);
 
     res.status(200).json({
       success: true,
       count: users.length,
       pagination: {
-        page: pageNum,
-        limit: limitNum,
+        page: pagination.page,
+        limit: pagination.limit,
         total,
-        totalPages: Math.ceil(total / limitNum) || 1
+        totalPages: Math.ceil(total / pagination.limit) || 1
       },
       data: users
     });

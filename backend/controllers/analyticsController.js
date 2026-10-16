@@ -23,6 +23,7 @@ const getAdminOverview = async (req, res, next) => {
 
     const [
       totalUsers,
+      totalDepartments,
       studentCount,
       facultyCount,
       adminCount,
@@ -39,15 +40,16 @@ const getAdminOverview = async (req, res, next) => {
       totalAnnouncements
     ] = await Promise.all([
       User.countDocuments(),
+      Department.countDocuments(),
       User.countDocuments({ role: 'student' }),
       User.countDocuments({ role: 'faculty' }),
       User.countDocuments({ role: 'admin' }),
       LeaveRequest.countDocuments(),
       LeaveRequest.countDocuments({ status: 'Pending' }),
       CampusIssue.countDocuments(),
-      CampusIssue.countDocuments({ status: { $ne: 'Closed' } }),
+      CampusIssue.countDocuments({ status: { $nin: ['Resolved', 'Closed'] } }),
       Complaint.countDocuments(),
-      Complaint.countDocuments({ status: { $ne: 'Closed' } }),
+      Complaint.countDocuments({ status: { $nin: ['Resolved', 'Closed'] } }),
       DocumentRequest.countDocuments(),
       DocumentRequest.countDocuments({ status: { $in: ['Pending', 'Under Review'] } }),
       Event.countDocuments(),
@@ -68,6 +70,7 @@ const getAdminOverview = async (req, res, next) => {
       success: true,
       data: {
         users: { total: totalUsers, students: studentCount, faculty: facultyCount, admins: adminCount },
+        departments: { total: totalDepartments },
         leaves: { total: totalLeaves, pending: pendingLeaves },
         issues: { total: totalIssues, open: openIssues },
         complaints: { total: totalComplaints, open: openComplaints },
@@ -415,15 +418,19 @@ const getStudentOverview = async (req, res, next) => {
 
     const [
       leavesCount,
+      pendingLeavesCount,
       complaintsCount,
       issuesCount,
+      openIssuesCount,
       documentsCount,
       eventRegistrationsCount,
       unreadNotificationsCount
     ] = await Promise.all([
       LeaveRequest.countDocuments({ studentId }),
+      LeaveRequest.countDocuments({ studentId, status: 'Pending' }),
       Complaint.countDocuments({ studentId }),
       CampusIssue.countDocuments({ studentId }),
+      CampusIssue.countDocuments({ studentId, status: { $nin: ['Resolved', 'Closed'] } }),
       DocumentRequest.countDocuments({ studentId }),
       EventRegistration.countDocuments({ studentId, status: 'Registered' }),
       Notification.countDocuments({ recipientId: studentId, isRead: false })
@@ -433,8 +440,10 @@ const getStudentOverview = async (req, res, next) => {
       success: true,
       data: {
         leavesCount,
+        pendingLeavesCount,
         complaintsCount,
         issuesCount,
+        openIssuesCount,
         documentsCount,
         eventRegistrationsCount,
         unreadNotificationsCount

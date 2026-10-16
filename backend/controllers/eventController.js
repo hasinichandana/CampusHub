@@ -3,6 +3,8 @@ const EventRegistration = require('../models/EventRegistration');
 const User = require('../models/User');
 const { createNotification, notifyManyUsers } = require('../utils/notificationHelper');
 const { logActivity } = require('../utils/activityLogger');
+const { addTextSearch, parsePagination } = require('../utils/queryFilters');
+const { validateEventSchedule } = require('../utils/eventValidation');
 
 const VALID_EVENT_TRANSITIONS = {
   Draft: ['Published', 'Cancelled'],
@@ -44,6 +46,26 @@ const createEvent = async (req, res, next) => {
       });
     }
 
+    const scheduleError = validateEventSchedule({
+      eventDate,
+      registrationDeadline,
+      startTime,
+      endTime
+    });
+    if (scheduleError) {
+      return res.status(400).json({ success: false, message: scheduleError });
+    }
+
+    const participantLimit = maxParticipants === undefined || maxParticipants === ''
+      ? 0
+      : Number(maxParticipants);
+    if (!Number.isSafeInteger(participantLimit) || participantLimit < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'maxParticipants must be a non-negative whole number'
+      });
+    }
+
     let assignedDeptId = departmentId;
 
     // Faculty rule: Must create department-scoped event
@@ -74,7 +96,7 @@ const createEvent = async (req, res, next) => {
       endTime,
       createdBy: req.user._id,
       status: status || 'Draft',
-      maxParticipants: maxParticipants || 0,
+      maxParticipants: participantLimit,
       registrationDeadline,
       image: imagePath
     });
@@ -134,12 +156,9 @@ const getEvents = async (req, res, next) => {
 
     if (eventType) query.eventType = eventType;
 
-    const searchTerm = q || search;
-    if (searchTerm) {
-      query.$or = [
-        { title: { $regex: searchTerm, $options: 'i' } },
-        { description: { $regex: searchTerm, $options: 'i' } }
-      ];
+    const searchError = addTextSearch(query, q || search, ['title', 'description']);
+    if (searchError) {
+      return res.status(400).json({ success: false, message: searchError });
     }
 
     if (dateFrom || dateTo) {
@@ -148,26 +167,27 @@ const getEvents = async (req, res, next) => {
       if (dateTo) query.eventDate.$lte = new Date(dateTo);
     }
 
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 10;
-    const skip = (pageNum - 1) * limitNum;
+    const pagination = parsePagination(page, limit);
+    if (!pagination) {
+      return res.status(400).json({ success: false, message: 'page must be positive and limit must be between 1 and 100' });
+    }
 
     const total = await Event.countDocuments(query);
     const events = await Event.find(query)
       .populate('createdBy', 'name email role')
       .populate('departmentId', 'name code')
       .sort({ eventDate: 1 })
-      .skip(skip)
-      .limit(limitNum);
+      .skip(pagination.skip)
+      .limit(pagination.limit);
 
     res.status(200).json({
       success: true,
       count: events.length,
       pagination: {
-        page: pageNum,
-        limit: limitNum,
+        page: pagination.page,
+        limit: pagination.limit,
         total,
-        totalPages: Math.ceil(total / limitNum) || 1
+        totalPages: Math.ceil(total / pagination.limit) || 1
       },
       data: events
     });
@@ -197,6 +217,17 @@ const getEventById = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: 'Forbidden: Students can only view published events'
+      });
+    }
+
+    if (
+      req.user.role === 'faculty' &&
+      event.status !== 'Published' &&
+      event.createdBy._id.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Faculty can only view unpublished events they created'
       });
     }
 
@@ -237,12 +268,91 @@ const updateEvent = async (req, res, next) => {
       });
     }
 
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Event updates must be a JSON object'
+      });
+    }
+
+    const allowedFields = [
+      'title',
+      'description',
+      'eventType',
+      'venue',
+      'eventDate',
+      'startTime',
+      'endTime',
+      'maxParticipants',
+      'registrationDeadline'
+    ];
+    if (req.user.role === 'admin') allowedFields.push('departmentId');
+
+    const unsupportedFields = Object.keys(req.body).filter(field => !allowedFields.includes(field));
+    if (unsupportedFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Unsupported event fields: ${unsupportedFields.join(', ')}`
+      });
+    }
+
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Provide at least one event field to update'
+      });
+    }
+
+    const scheduleFields = ['eventDate', 'registrationDeadline', 'startTime', 'endTime'];
+    if (scheduleFields.some(field => req.body[field] !== undefined)) {
+      const scheduleError = validateEventSchedule({
+        eventDate: req.body.eventDate || event.eventDate,
+        registrationDeadline: req.body.registrationDeadline || event.registrationDeadline,
+        startTime: req.body.startTime || event.startTime,
+        endTime: req.body.endTime || event.endTime
+      });
+      if (scheduleError) {
+        return res.status(400).json({ success: false, message: scheduleError });
+      }
+    }
+
+    if (req.body.maxParticipants !== undefined) {
+      const participantLimit = Number(req.body.maxParticipants);
+      if (!Number.isSafeInteger(participantLimit) || participantLimit < 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'maxParticipants must be a non-negative whole number'
+        });
+      }
+      if (participantLimit > 0) {
+        const activeRegistrations = await EventRegistration.countDocuments({
+          eventId: event._id,
+          status: 'Registered'
+        });
+        if (participantLimit < activeRegistrations) {
+          return res.status(400).json({
+            success: false,
+            message: 'maxParticipants cannot be lower than the current active registration count'
+          });
+        }
+      }
+    }
+
     const updatedEvent = await Event.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true
     })
       .populate('createdBy', 'name email role')
       .populate('departmentId', 'name code');
+
+    await logActivity({
+      req,
+      action: 'UPDATE',
+      module: 'EVENT',
+      entityType: 'Event',
+      entityId: event._id,
+      description: `Updated event: "${updatedEvent.title}"`
+    });
 
     res.status(200).json({
       success: true,
@@ -282,12 +392,42 @@ const deleteEvent = async (req, res, next) => {
       });
     }
 
-    await Event.findByIdAndDelete(req.params.id);
-    await EventRegistration.deleteMany({ eventId: req.params.id });
+    if (event.status === 'Completed') {
+      return res.status(409).json({
+        success: false,
+        message: 'Completed events cannot be cancelled'
+      });
+    }
+
+    if (event.status !== 'Cancelled') {
+      event.status = 'Cancelled';
+      await event.save();
+
+      const activeRegistrations = await EventRegistration.find({
+        eventId: event._id,
+        status: 'Registered'
+      }).select('studentId');
+      await notifyManyUsers(activeRegistrations.map(registration => registration.studentId), {
+        type: 'EVENT',
+        title: 'Event Cancelled',
+        message: `The event "${event.title}" has been cancelled.`,
+        relatedEntityType: 'Event',
+        relatedEntityId: event._id
+      });
+
+      await logActivity({
+        req,
+        action: 'CANCEL',
+        module: 'EVENT',
+        entityType: 'Event',
+        entityId: event._id,
+        description: `Cancelled event: "${event.title}"`
+      });
+    }
 
     res.status(200).json({
       success: true,
-      message: 'Event deleted successfully'
+      message: 'Event cancelled successfully; registration history has been retained'
     });
   } catch (error) {
     next(error);

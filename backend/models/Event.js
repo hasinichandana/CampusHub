@@ -57,7 +57,8 @@ const eventSchema = new mongoose.Schema(
     },
     maxParticipants: {
       type: Number,
-      default: 0 // 0 means unlimited
+      default: 0, // 0 means unlimited
+      min: 0
     },
     registrationDeadline: {
       type: Date,

@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Ensure upload subdirectories exist
-const dirs = ['leaves', 'issues', 'complaints', 'documents', 'generated'];
+const dirs = ['leaves', 'issues', 'complaints', 'documents', 'generated', 'events'];
 dirs.forEach(dir => {
   const dirPath = path.join(__dirname, `../uploads/${dir}`);
   if (!fs.existsSync(dirPath)) {
@@ -15,13 +15,17 @@ dirs.forEach(dir => {
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (file.fieldname === 'image') {
-      cb(null, path.join(__dirname, '../uploads/issues'));
+      if (req.originalUrl && req.originalUrl.includes('/events')) {
+        cb(null, path.join(__dirname, '../uploads/events'));
+      } else {
+        cb(null, path.join(__dirname, '../uploads/issues'));
+      }
     } else if (file.fieldname === 'attachment') {
       cb(null, path.join(__dirname, '../uploads/complaints'));
     } else if (file.fieldname === 'generatedDocument') {
       cb(null, path.join(__dirname, '../uploads/generated'));
     } else if (file.fieldname === 'supportingDocument') {
-      // Check path endpoint to differentiate leave vs document request if needed
+      // Differentiate leave vs document request
       if (req.originalUrl && req.originalUrl.includes('/documents')) {
         cb(null, path.join(__dirname, '../uploads/documents'));
       } else {
@@ -46,7 +50,9 @@ const fileFilter = (req, file, cb) => {
   if (allowedExtensions.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error(`Invalid file type '${ext}'. Allowed types: PDF, DOC, DOCX, PNG, JPG, JPEG`), false);
+    const error = new Error(`Invalid file type '${ext}'. Allowed types: PDF, DOC, DOCX, PNG, JPG, JPEG`);
+    error.statusCode = 400;
+    cb(error, false);
   }
 };
 
