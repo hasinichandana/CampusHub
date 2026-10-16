@@ -1,6 +1,6 @@
 // CampusHub Centralized API Client
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = "https://campushub-backend-dak3.onrender.com/api";
 
 // Helper function to resolve dynamic frontend paths for Live Server compatibility
 function getAppPath(relativePath) {
