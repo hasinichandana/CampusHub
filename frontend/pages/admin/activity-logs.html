@@ -125,7 +125,7 @@
       const mod = document.getElementById('module-filter').value;
       const act = document.getElementById('action-filter').value;
 
-      let url = 'http://localhost:5000/api/activity-logs?limit=50';
+      let url = `${API_BASE_URL}/activity-logs?limit=50`;
       if (mod) url += `&module=${mod}`;
       if (act) url += `&action=${act}`;
 

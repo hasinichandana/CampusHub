@@ -199,7 +199,7 @@ async function loadFacultyAssignedIssues() {
       const statusBadge = getIssueStatusBadge(issue.status);
 
       const imgLink = issue.image
-        ? `<a href="http://localhost:5000/${issue.image}" target="_blank" style="color: #818cf8; text-decoration: underline;">📷 Photo</a>`
+        ? `<a href="https://campushub-backend-dak3.onrender.com/${issue.image}" target="_blank" style="color: #818cf8; text-decoration: underline;">📷 Photo</a>`
         : '<span style="color: #64748b;">None</span>';
 
       html += `
@@ -245,7 +245,7 @@ function openProcessIssueModal(issueId, title, category, reporter, location, enc
 
   const imgContainer = document.getElementById('process-issue-img-container');
   if (imgPath) {
-    imgContainer.innerHTML = `<a href="http://localhost:5000/${imgPath}" target="_blank" style="color: #818cf8; font-weight: 600; text-decoration: underline;">📷 Download/View Photo</a>`;
+    imgContainer.innerHTML = `<a href="https://campushub-backend-dak3.onrender.com/${imgPath}" target="_blank" style="color: #818cf8; font-weight: 600; text-decoration: underline;">📷 Download/View Photo</a>`;
   } else {
     imgContainer.innerHTML = '<span style="color: #64748b;">No photo attached</span>';
   }

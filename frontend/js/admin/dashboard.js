@@ -241,7 +241,7 @@ async function loadAdminIssues() {
       const statusBadge = getIssueStatusBadge(issue.status);
 
       const imgLink = issue.image
-        ? `<a href="http://localhost:5000/${issue.image}" target="_blank" style="color: #818cf8; text-decoration: underline;">📷 Photo</a>`
+        ? `<a href="https://campushub-backend-dak3.onrender.com/${issue.image}" target="_blank" style="color: #818cf8; text-decoration: underline;">📷 Photo</a>`
         : '<span style="color: #64748b;">None</span>';
 
       const actionBtn = issue.status === 'Resolved'

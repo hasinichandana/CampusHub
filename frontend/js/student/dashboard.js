@@ -144,7 +144,7 @@ async function handleApplyLeave(e) {
   const token = Auth.getToken();
 
   try {
-    const response = await fetch('http://localhost:5000/api/leaves', {
+    const response = await fetch('https://campushub-backend-dak3.onrender.com/api/leaves', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` },
       body: formData
@@ -215,7 +215,7 @@ async function loadStudentIssues() {
       const statusBadge = getIssueStatusBadge(issue.status);
       
       const imgLink = issue.image
-        ? `<a href="http://localhost:5000/${issue.image}" target="_blank" style="color: #818cf8; text-decoration: underline;">📷 Photo</a>`
+        ? `<a href="https://campushub-backend-dak3.onrender.com/api/${issue.image}" target="_blank" style="color: #818cf8; text-decoration: underline;">📷 Photo</a>`
         : '<span style="color: #64748b;">None</span>';
 
       const assignedText = issue.assignedTo ? issue.assignedTo.name : '<span style="color: #64748b;">Pending Assignment</span>';
@@ -264,7 +264,7 @@ async function handleReportIssue(e) {
   const token = Auth.getToken();
 
   try {
-    const response = await fetch('http://localhost:5000/api/issues', {
+    const response = await fetch('https://campushub-backend-dak3.onrender.com//api/issues', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` },
       body: formData

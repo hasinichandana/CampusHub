@@ -1,6 +1,6 @@
 // CampusHub Phase 1 Frontend Handler
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = "https://campushub-backend-dak3.onrender.com/api";
 
 document.addEventListener('DOMContentLoaded', () => {
   const checkBtn = document.getElementById('check-health-btn');
@@ -67,7 +67,7 @@ async function checkSystemHealth() {
     rawResponseEl.textContent = JSON.stringify({
       success: false,
       error: error.message,
-      hint: 'Make sure the backend server is running on http://localhost:5000'
+      hint: 'Make sure the backend server is running on https://campushub-backend-dak3.onrender.com/api'
     }, null, 2);
   }
 }

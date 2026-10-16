@@ -208,7 +208,7 @@
       const category = document.getElementById('category-filter').value;
       const semester = document.getElementById('semester-filter').value;
 
-      let url = 'http://localhost:5000/api/academic-resources?limit=50';
+      let url = `${API_BASE_URL}/academic-resources?limit=50`;
       if (search) url += `&search=${encodeURIComponent(search)}`;
       if (category) url += `&category=${category}`;
       if (semester) url += `&semester=${semester}`;
@@ -260,7 +260,7 @@
       formData.append('file', document.getElementById('up-file').files[0]);
 
       try {
-        const res = await fetch('http://localhost:5000/api/academic-resources', {
+        const res = await fetch('https://campushub-backend-dak3.onrender.com/api/academic-resources', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: formData
@@ -283,7 +283,7 @@
 
     async function deleteRes(id) {
       if (!confirm('Are you sure you want to delete this resource?')) return;
-      await fetch(`http://localhost:5000/api/academic-resources/${id}`, {
+      await fetch(`${API_BASE_URL}/academic-resources/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
